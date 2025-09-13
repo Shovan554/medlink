@@ -14,6 +14,7 @@ dotenv.config();
 import pool from './config/database.js';
 import axios from 'axios';
 import callsRoutes from './routes/calls.js';
+import aiRoutes from './routes/ai.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
@@ -210,6 +211,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/trends', trendsRoutes);
 app.use('/api/calls', callsRoutes);
+app.use('/api', aiRoutes);
 
 // Debug: List all registered routes
 console.log('Registered routes:');

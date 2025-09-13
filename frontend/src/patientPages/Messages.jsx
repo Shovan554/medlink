@@ -10,6 +10,10 @@ function Messages() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
+  // AI-specific state
+  const [aiMessages, setAiMessages] = useState([]);
+  const [isAiChat, setIsAiChat] = useState(false);
+
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentType, setAppointmentType] = useState('');
   const [doctorAvailability, setDoctorAvailability] = useState([]);
@@ -83,43 +87,69 @@ function Messages() {
 
   useEffect(() => {
     fetchConversations();
+    fetchAiConversations();
   }, []);
 
   useEffect(() => {
     if (selectedConversation) {
-      fetchMessages(selectedConversation.user_id);
-      
-      // Set up polling to refresh messages every 3 seconds
-      const interval = setInterval(() => {
+      if (selectedConversation.user_id === 0) {
+        // AI conversation selected
+        setIsAiChat(true);
+        setMessages(aiMessages);
+      } else {
+        // Regular doctor conversation
+        setIsAiChat(false);
         fetchMessages(selectedConversation.user_id);
-      }, 3000);
-      
-      // Cleanup interval when conversation changes or component unmounts
-      return () => clearInterval(interval);
+        
+        // Set up polling for regular messages
+        const interval = setInterval(() => {
+          fetchMessages(selectedConversation.user_id);
+        }, 3000);
+        
+        return () => clearInterval(interval);
+      }
     }
-  }, [selectedConversation]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  }, [selectedConversation, aiMessages]);
 
   const fetchConversations = async () => {
-          try {
-            const response = await authenticatedFetch('http://localhost:3001/api/conversations')
-            
-            if (response && response.ok) {
-              const data = await response.json()
-              setConversations(data)
-            }
-          } catch (error) {
-            console.error('Error fetching conversations:', error)
-          } finally {
-            setLoading(false)
-          }
-   
-  
-  
- }
+    try {
+      const response = await authenticatedFetch('http://localhost:3001/api/conversations')
+      
+      if (response && response.ok) {
+        const data = await response.json()
+        
+        // Add MedLink AI as first conversation
+        const aiConversation = {
+          user_id: 0,
+          first_name: 'MedLink',
+          last_name: 'AI',
+          specialization: 'AI Health Assistant',
+          last_message: 'Ask me about your health data',
+          last_message_time: new Date().toISOString(),
+          unread_count: 0
+        };
+        
+        setConversations([aiConversation, ...data])
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchAiConversations = async () => {
+    try {
+      const response = await authenticatedFetch('http://localhost:3001/api/ai/conversations')
+      
+      if (response && response.ok) {
+        const data = await response.json()
+        setAiMessages(data)
+      }
+    } catch (error) {
+      console.error('Error fetching AI conversations:', error)
+    }
+  }
 
   const fetchMessages = async (userId) => {
     try {
@@ -146,47 +176,92 @@ function Messages() {
     const messageContent = newMessage;
     const userID = localStorage.getItem('userID');
     
-    // Optimistic update - add message immediately to UI
-    const tempMessage = {
-      message_id: Date.now(), // temporary ID
-      content: messageContent,
-      sender_id: parseInt(userID),
-      receiver_id: selectedConversation.user_id,
-      created_at: new Date().toISOString(),
-      sending: true // flag to show it's being sent
-    };
-    
-    setMessages(prev => [...prev, tempMessage]);
-    setNewMessage('');
+    if (isAiChat) {
+      // Handle AI chat
+      const tempMessage = {
+        message_id: Date.now(),
+        content: messageContent,
+        sender_id: parseInt(userID),
+        receiver_id: 0,
+        created_at: new Date().toISOString(),
+        sending: true
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
 
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          content: messageContent,
-          receiver_id: selectedConversation.user_id
-        }),
-      });
+      try {
+        const response = await authenticatedFetch('http://localhost:3001/api/ai/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            message: messageContent
+          }),
+        });
 
-      if (response.ok) {
-        // Refresh messages to get the real message from server
-        fetchMessages(selectedConversation.user_id);
-        fetchConversations();
-      } else {
-        // Remove the optimistic message if sending failed
+        if (response && response.ok) {
+          const data = await response.json();
+          
+          // Add AI response to messages
+          const aiResponse = {
+            message_id: Date.now() + 1,
+            content: data.response,
+            sender_id: 0,
+            receiver_id: parseInt(userID),
+            created_at: new Date().toISOString()
+          };
+          
+          // Update messages and AI messages state
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          fetchAiConversations(); // Refresh AI conversations to get latest from DB
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setNewMessage(messageContent);
+        }
+      } catch (error) {
+        console.error('Error sending AI message:', error);
         setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
-        setNewMessage(messageContent); // Restore the message text
+        setNewMessage(messageContent);
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Remove the optimistic message if sending failed
-      setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
-      setNewMessage(messageContent); // Restore the message text
+    } else {
+      // Handle regular doctor chat (existing code)
+      const tempMessage = {
+        message_id: Date.now(),
+        content: messageContent,
+        sender_id: parseInt(userID),
+        receiver_id: selectedConversation.user_id,
+        created_at: new Date().toISOString(),
+        sending: true
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:3001/api/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            content: messageContent,
+            receiver_id: selectedConversation.user_id
+          }),
+        });
+
+        if (response.ok) {
+          fetchMessages(selectedConversation.user_id);
+          fetchConversations();
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setNewMessage(messageContent);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+        setNewMessage(messageContent);
+      }
     }
   };
 
@@ -387,7 +462,7 @@ function Messages() {
           color: 'rgba(255, 255, 255, 0.7)', 
           fontSize: '1.1rem' 
         }}>
-          Chat with your healthcare providers
+          Chat with your healthcare providers and AI assistant
         </p>
       </div>
       
@@ -441,23 +516,13 @@ function Messages() {
                       : '3px solid transparent',
                     transition: 'all 0.2s ease'
                   }}
-                  onMouseEnter={(e) => {
-                    if (selectedConversation?.user_id !== conversation.user_id) {
-                      e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedConversation?.user_id !== conversation.user_id) {
-                      e.target.style.backgroundColor = 'transparent';
-                    }
-                  }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                     <div style={{
                       width: '40px',
                       height: '40px',
                       borderRadius: '50%',
-                      backgroundColor: '#00fbcd',
+                      backgroundColor: conversation.user_id === 0 ? '#4f46e5' : '#00fbcd',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -466,7 +531,7 @@ function Messages() {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {conversation.first_name?.[0]}{conversation.last_name?.[0]}
+                      {conversation.user_id === 0 ? '🤖' : `${conversation.first_name?.[0]}${conversation.last_name?.[0]}`}
                     </div>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ 
@@ -475,7 +540,7 @@ function Messages() {
                         fontSize: '14px',
                         fontWeight: '600'
                       }}>
-                        Dr. {conversation.first_name} {conversation.last_name}
+                        {conversation.user_id === 0 ? 'MedLink AI' : `Dr. ${conversation.first_name} ${conversation.last_name}`}
                       </h4>
                       <p style={{ 
                         margin: 0, 
@@ -521,7 +586,7 @@ function Messages() {
                       width: '45px',
                       height: '45px',
                       borderRadius: '50%',
-                      backgroundColor: '#00fbcd',
+                      backgroundColor: selectedConversation.user_id === 0 ? '#4f46e5' : '#00fbcd',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -530,7 +595,7 @@ function Messages() {
                       fontWeight: '600',
                       fontSize: '18px'
                     }}>
-                      {selectedConversation.first_name?.[0]}{selectedConversation.last_name?.[0]}
+                      {selectedConversation.user_id === 0 ? '🤖' : `${selectedConversation.first_name?.[0]}${selectedConversation.last_name?.[0]}`}
                     </div>
                     <div>
                       <h3 style={{ 
@@ -538,53 +603,55 @@ function Messages() {
                         color: 'rgba(255, 255, 255, 0.9)', 
                         fontSize: '18px' 
                       }}>
-                        Dr. {selectedConversation.first_name} {selectedConversation.last_name}
+                        {selectedConversation.user_id === 0 ? 'MedLink AI' : `Dr. ${selectedConversation.first_name} ${selectedConversation.last_name}`}
                       </h3>
                       <p style={{ 
                         margin: 0, 
                         color: 'rgba(255, 255, 255, 0.6)', 
                         fontSize: '14px' 
                       }}>
-                        Doctor
+                        {selectedConversation.specialization}
                       </p>
                     </div>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      onClick={() => setShowAppointmentModal(true)}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: '#00fbcd',
-                        color: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      Set up Appointment
-                    </button>
-                    
-                    <button
-                      onClick={startCall}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      📞 Start Call
-                    </button>
-                  </div>
+                  {!isAiChat && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => setShowAppointmentModal(true)}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: '#00fbcd',
+                          color: '#1a1a1a',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Set up Appointment
+                      </button>
+                      
+                      <button
+                        onClick={startCall}
+                        style={{
+                          padding: '10px 20px',
+                          backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        📞 Start Call
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -603,12 +670,13 @@ function Messages() {
                     color: 'rgba(255, 255, 255, 0.6)', 
                     padding: '40px' 
                   }}>
-                    No messages yet. Start a conversation!
+                    {isAiChat ? 'Ask MedLink AI about your health data!' : 'No messages yet. Start a conversation!'}
                   </div>
                 ) : (
                   messages.map((message) => {
                     const userID = localStorage.getItem('userID');
                     const isMyMessage = message.sender_id == userID;
+                    const isAiMessage = message.sender_id === 0;
                     
                     return (
                       <div
@@ -623,8 +691,8 @@ function Messages() {
                             maxWidth: '70%',
                             padding: '12px 16px',
                             borderRadius: '18px',
-                            backgroundColor: isMyMessage ? '#00fbcd' : 'rgba(255, 255, 255, 0.1)',
-                            color: isMyMessage ? '#1a1a1a' : 'rgba(255, 255, 255, 0.9)',
+                            backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? '#4f46e5' : 'rgba(255, 255, 255, 0.1)'),
+                            color: isMyMessage ? '#1a1a1a' : 'white',
                             border: isMyMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.2)'
                           }}
                         >
@@ -656,7 +724,7 @@ function Messages() {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your message..."
+                    placeholder={isAiChat ? "Ask about your health data..." : "Type your message..."}
                     style={{
                       flex: 1,
                       padding: '12px 16px',

@@ -8,35 +8,184 @@ function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [callStatus, setCallStatus] = useState(null);
+  const [isAiChat, setIsAiChat] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const formatAiResponse = (content) => {
+    // Split the content into sections
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    return (
+      <div>
+        {lines.map((line, index) => {
+          const trimmedLine = line.trim();
+          
+          // Assessment section
+          if (trimmedLine.startsWith('Assessment:')) {
+            return (
+              <div key={index} style={{ marginBottom: '12px' }}>
+                <div style={{
+                  color: '#4f46e5',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Assessment
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  borderLeft: '3px solid #4f46e5'
+                }}>
+                  {trimmedLine.replace('Assessment:', '').trim()}
+                </div>
+              </div>
+            );
+          }
+          
+          // Key Data section
+          if (trimmedLine.startsWith('Key Data:')) {
+            return (
+              <div key={index} style={{ marginBottom: '12px' }}>
+                <div style={{
+                  color: '#00fbcd',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Key Data
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontSize: '14px',
+                  backgroundColor: 'rgba(0, 251, 205, 0.1)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  borderLeft: '3px solid #00fbcd',
+                  fontFamily: 'monospace'
+                }}>
+                  {trimmedLine.replace('Key Data:', '').trim()}
+                </div>
+              </div>
+            );
+          }
+          
+          // Recommendations section
+          if (trimmedLine.startsWith('Recommendations:')) {
+            return (
+              <div key={index} style={{ marginBottom: '12px' }}>
+                <div style={{
+                  color: '#ffa500',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Recommendations
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontSize: '14px',
+                  backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  borderLeft: '3px solid #ffa500'
+                }}>
+                  {trimmedLine.replace('Recommendations:', '').trim()}
+                </div>
+              </div>
+            );
+          }
+          
+          // Medication considerations section
+          if (trimmedLine.startsWith('Medication considerations')) {
+            return (
+              <div key={index} style={{ marginBottom: '8px' }}>
+                <div style={{
+                  color: '#e74c3c',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Medication Considerations
+                </div>
+                <div style={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontSize: '14px',
+                  backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  borderLeft: '3px solid #e74c3c',
+                  fontStyle: 'italic'
+                }}>
+                  {trimmedLine.replace('Medication considerations (clinician judgment only):', '').trim()}
+                </div>
+              </div>
+            );
+          }
+          
+          // Regular lines
+          if (trimmedLine && !trimmedLine.includes(':')) {
+            return (
+              <div key={index} style={{
+                color: 'rgba(255, 255, 255, 0.9)',
+                fontSize: '14px',
+                marginBottom: '6px',
+                lineHeight: '1.5'
+              }}>
+                {trimmedLine}
+              </div>
+            );
+          }
+          
+          return null;
+        })}
+      </div>
+    );
+  };
+
   useEffect(() => {
     fetchConversations();
+    fetchAiConversations();
   }, []);
 
   useEffect(() => {
-    let interval;
-    
     if (selectedConversation) {
-      fetchMessages(selectedConversation.user_id);
-      
-      // Set up polling to refresh messages every 3 seconds
-      interval = setInterval(() => {
+      if (selectedConversation.user_id === -1) {
+        // AI conversation selected
+        setIsAiChat(true);
+        setMessages(aiMessages);
+      } else {
+        // Regular patient conversation
+        setIsAiChat(false);
         fetchMessages(selectedConversation.user_id);
-      }, 3000);
-    }
-    
-    // Cleanup interval when conversation changes or component unmounts
-    return () => {
-      if (interval) {
-        clearInterval(interval);
+        
+        // Set up polling for regular messages
+        const interval = setInterval(() => {
+          fetchMessages(selectedConversation.user_id);
+        }, 3000);
+        
+        return () => clearInterval(interval);
       }
-    };
-  }, [selectedConversation]);
+    }
+  }, [selectedConversation, aiMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -48,7 +197,17 @@ function Messages() {
       
       if (response && response.ok) {
         const data = await response.json();
-        console.log('Doctor conversations data:', data);
+        
+        // Add MedLink Assistant as first conversation
+        const aiConversation = {
+          user_id: -1,
+          first_name: 'MedLink',
+          last_name: 'Assistant',
+          specialization: 'AI Clinical Assistant',
+          last_message: 'Ask me about patient health data',
+          last_message_time: new Date().toISOString(),
+          unread_count: 0
+        };
         
         // Sort conversations by last message time (most recent first)
         const sortedConversations = data.sort((a, b) => {
@@ -57,9 +216,9 @@ function Messages() {
           return timeB - timeA;
         });
         
-        setConversations(sortedConversations);
-        if (sortedConversations.length > 0 && !selectedConversation) {
-          setSelectedConversation(sortedConversations[0]);
+        setConversations([aiConversation, ...sortedConversations]);
+        if (!selectedConversation) {
+          setSelectedConversation(aiConversation);
         }
       }
     } catch (error) {
@@ -68,6 +227,19 @@ function Messages() {
       setLoading(false);
     }
   };
+
+  const fetchAiConversations = async () => {
+    try {
+      const response = await authenticatedFetch('http://localhost:3001/api/doctor/ai/conversations')
+      
+      if (response && response.ok) {
+        const data = await response.json()
+        setAiMessages(data)
+      }
+    } catch (error) {
+      console.error('Error fetching AI conversations:', error)
+    }
+  }
 
   const fetchMessages = async (userId) => {
     try {
@@ -89,42 +261,84 @@ function Messages() {
     const messageContent = newMessage;
     const userID = localStorage.getItem('userID');
     
-    // Optimistic update - add message immediately to UI
-    const tempMessage = {
-      message_id: Date.now(), // temporary ID
-      content: messageContent,
-      sender_id: parseInt(userID),
-      receiver_id: selectedConversation.user_id,
-      created_at: new Date().toISOString(),
-      sending: true // flag to show it's being sent
-    };
-    
-    setMessages(prev => [...prev, tempMessage]);
-    setNewMessage('');
+    if (isAiChat) {
+      // Handle AI chat
+      const tempMessage = {
+        message_id: Date.now(),
+        content: messageContent,
+        sender_id: parseInt(userID),
+        receiver_id: -1,
+        created_at: new Date().toISOString(),
+        sending: true
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+      setIsAiTyping(true); // Start typing animation
 
-    try {
-      const response = await authenticatedFetch('http://localhost:3001/api/messages', {
-        method: 'POST',
-        body: JSON.stringify({
-          content: messageContent,
-          receiver_id: selectedConversation.user_id
-        }),
-      });
+      try {
+        const response = await authenticatedFetch('http://localhost:3001/api/doctor/ai/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            message: messageContent
+          }),
+        });
 
-      if (response && response.ok) {
-        // Refresh messages to get the real message from server
-        fetchMessages(selectedConversation.user_id);
-        fetchConversations();
-      } else {
-        // Remove the optimistic message if sending failed
+        if (response && response.ok) {
+          const data = await response.json();
+          
+          // Remove temp message and typing indicator
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false);
+          
+          // Refresh AI conversations to get latest from DB
+          fetchAiConversations();
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false);
+          setNewMessage(messageContent);
+        }
+      } catch (error) {
+        console.error('Error sending AI message:', error);
         setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
-        setNewMessage(messageContent); // Restore the message text
+        setIsAiTyping(false);
+        setNewMessage(messageContent);
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Remove the optimistic message if sending failed
-      setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
-      setNewMessage(messageContent); // Restore the message text
+    } else {
+      // Handle regular patient chat (existing code)
+      const tempMessage = {
+        message_id: Date.now(),
+        content: messageContent,
+        sender_id: parseInt(userID),
+        receiver_id: selectedConversation.user_id,
+        created_at: new Date().toISOString(),
+        sending: true
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+
+      try {
+        const response = await authenticatedFetch('http://localhost:3001/api/messages', {
+          method: 'POST',
+          body: JSON.stringify({
+            content: messageContent,
+            receiver_id: selectedConversation.user_id
+          }),
+        });
+
+        if (response && response.ok) {
+          fetchMessages(selectedConversation.user_id);
+          fetchConversations();
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setNewMessage(messageContent);
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+        setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+        setNewMessage(messageContent);
+      }
     }
   };
 
@@ -263,7 +477,7 @@ function Messages() {
                       width: '40px',
                       height: '40px',
                       borderRadius: '50%',
-                      backgroundColor: '#00fbcd',
+                      backgroundColor: conversation.user_id === -1 ? '#4f46e5' : '#00fbcd',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -272,7 +486,7 @@ function Messages() {
                       fontWeight: '600',
                       fontSize: '16px'
                     }}>
-                      {conversation.first_name?.[0]}{conversation.last_name?.[0]}
+                      {conversation.user_id === -1 ? '🤖' : `${conversation.first_name?.[0]}${conversation.last_name?.[0]}`}
                     </div>
                     <div style={{ flex: 1 }}>
                       <h4 style={{ 
@@ -281,14 +495,14 @@ function Messages() {
                         fontSize: '14px',
                         fontWeight: '600'
                       }}>
-                        {conversation.first_name} {conversation.last_name}
+                        {conversation.user_id === -1 ? 'MedLink Assistant' : `${conversation.first_name} ${conversation.last_name}`}
                       </h4>
                       <p style={{ 
                         margin: 0, 
                         color: 'rgba(255, 255, 255, 0.6)', 
                         fontSize: '12px' 
                       }}>
-                        Patient
+                        {conversation.user_id === -1 ? 'AI Clinical Assistant' : 'Patient'}
                       </p>
                     </div>
                   </div>
@@ -345,16 +559,16 @@ function Messages() {
                     width: '45px',
                     height: '45px',
                     borderRadius: '50%',
-                    backgroundColor: '#00fbcd',
+                    backgroundColor: selectedConversation.user_id === -1 ? '#4f46e5' : '#00fbcd',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: '15px',
-                    color: '#1a1a1a',
+                    color: 'white',
                     fontWeight: '600',
                     fontSize: '18px'
                   }}>
-                    {selectedConversation.first_name?.[0]}{selectedConversation.last_name?.[0]}
+                    {selectedConversation.user_id === -1 ? '🤖' : `${selectedConversation.first_name?.[0]}${selectedConversation.last_name?.[0]}`}
                   </div>
                   <div style={{ flex: 1 }}>
                     <h3 style={{ 
@@ -362,32 +576,34 @@ function Messages() {
                       color: 'rgba(255, 255, 255, 0.9)', 
                       fontSize: '18px' 
                     }}>
-                      {selectedConversation.first_name} {selectedConversation.last_name}
+                      {selectedConversation.user_id === -1 ? 'MedLink Assistant' : `${selectedConversation.first_name} ${selectedConversation.last_name}`}
                     </h3>
                     <p style={{ 
                       margin: 0, 
                       color: 'rgba(255, 255, 255, 0.6)', 
                       fontSize: '14px' 
                     }}>
-                      Patient
+                      {selectedConversation.user_id === -1 ? 'AI Clinical Assistant' : 'Patient'}
                     </p>
                   </div>
-                  <button
-                    onClick={startCall}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    📞 Start Call
-                  </button>
+                  {selectedConversation.user_id !== -1 && (
+                    <button
+                      onClick={startCall}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      📞 Start Call
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -406,45 +622,209 @@ function Messages() {
                     color: 'rgba(255, 255, 255, 0.6)', 
                     padding: '40px' 
                   }}>
-                    No messages yet. Start a conversation with your patient!
+                    {isAiChat ? 'Ask MedLink Assistant about patient health data!' : 'No messages yet. Start a conversation with your patient!'}
                   </div>
                 ) : (
                   messages.map((message) => {
                     const userID = localStorage.getItem('userID');
                     const isMyMessage = message.sender_id == userID;
+                    const isAiMessage = message.sender_id === -1;
                     
                     return (
                       <div
                         key={message.message_id}
                         style={{
                           display: 'flex',
-                          justifyContent: isMyMessage ? 'flex-end' : 'flex-start'
+                          justifyContent: isMyMessage ? 'flex-end' : 'flex-start',
+                          alignItems: 'flex-start',
+                          gap: '12px'
                         }}
                       >
+                        {!isMyMessage && (
+                          <div style={{
+                            width: '35px',
+                            height: '35px',
+                            borderRadius: '50%',
+                            backgroundColor: isAiMessage ? '#4f46e5' : '#00fbcd',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontSize: '16px',
+                            flexShrink: 0,
+                            marginTop: '5px'
+                          }}>
+                            {isAiMessage ? '🤖' : selectedConversation?.first_name?.[0]}
+                          </div>
+                        )}
+                        
                         <div
                           style={{
-                            maxWidth: '70%',
-                            padding: '12px 16px',
-                            borderRadius: '18px',
-                            backgroundColor: isMyMessage ? '#00fbcd' : 'rgba(255, 255, 255, 0.1)',
+                            maxWidth: isAiMessage ? '85%' : '70%',
+                            padding: isAiMessage ? '20px' : '12px 16px',
+                            borderRadius: isAiMessage ? '12px' : '18px',
+                            backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? 'rgba(79, 70, 229, 0.1)' : 'rgba(255, 255, 255, 0.1)'),
                             color: isMyMessage ? '#1a1a1a' : 'rgba(255, 255, 255, 0.9)',
-                            border: isMyMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.2)'
+                            border: isMyMessage ? 'none' : (isAiMessage ? '1px solid rgba(79, 70, 229, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)'),
+                            position: 'relative'
                           }}
                         >
-                          <p style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{message.content}</p>
+                          {isAiMessage && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '12px',
+                              paddingBottom: '8px',
+                              borderBottom: '1px solid rgba(79, 70, 229, 0.2)'
+                            }}>
+                              <span style={{
+                                color: '#4f46e5',
+                                fontWeight: '600',
+                                fontSize: '14px'
+                              }}>
+                                MedLink Assistant - Clinical Analysis
+                              </span>
+                            </div>
+                          )}
+                          
+                          {isAiMessage ? (
+                            <div style={{ 
+                              fontSize: '14px',
+                              lineHeight: '1.6',
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              {formatAiResponse(message.content)}
+                            </div>
+                          ) : (
+                            <p style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{message.content}</p>
+                          )}
+                          
                           <p style={{
-                            margin: 0,
+                            margin: isAiMessage ? '12px 0 0 0' : '0',
                             fontSize: '11px',
                             opacity: 0.7,
-                            textAlign: 'right'
+                            textAlign: 'right',
+                            borderTop: isAiMessage ? '1px solid rgba(79, 70, 229, 0.2)' : 'none',
+                            paddingTop: isAiMessage ? '8px' : '0'
                           }}>
                             {new Date(message.created_at).toLocaleTimeString()}
                           </p>
                         </div>
+                        
+                        {isMyMessage && (
+                          <div style={{
+                            width: '35px',
+                            height: '35px',
+                            borderRadius: '50%',
+                            backgroundColor: '#00fbcd',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#1a1a1a',
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            flexShrink: 0,
+                            marginTop: '5px'
+                          }}>
+                            Dr
+                          </div>
+                        )}
                       </div>
                     );
                   })
                 )}
+                
+                {/* AI Typing Indicator */}
+                {isAiTyping && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      width: '35px',
+                      height: '35px',
+                      borderRadius: '50%',
+                      backgroundColor: '#4f46e5',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: '16px',
+                      flexShrink: 0,
+                      marginTop: '5px'
+                    }}>
+                      🤖
+                    </div>
+                    
+                    <div style={{
+                      maxWidth: '85%',
+                      padding: '20px',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                      border: '1px solid rgba(79, 70, 229, 0.3)',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: '12px',
+                        paddingBottom: '8px',
+                        borderBottom: '1px solid rgba(79, 70, 229, 0.2)'
+                      }}>
+                        <span style={{
+                          color: '#4f46e5',
+                          fontWeight: '600',
+                          fontSize: '14px'
+                        }}>
+                          MedLink Assistant - Analyzing...
+                        </span>
+                      </div>
+                      
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: 'rgba(255, 255, 255, 0.7)'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: '4px'
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#4f46e5',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0s'
+                          }}></div>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#4f46e5',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0.2s'
+                          }}></div>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: '#4f46e5',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0.4s'
+                          }}></div>
+                        </div>
+                        <span style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                          Processing clinical data...
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div ref={messagesEndRef} />
               </div>
 
@@ -504,6 +884,19 @@ function Messages() {
           )}
         </div>
       </div>
+      {/* CSS for typing animation */}
+      <style jsx>{`
+        @keyframes typing-dot {
+          0%, 60%, 100% {
+            transform: scale(1);
+            opacity: 0.5;
+          }
+          30% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
