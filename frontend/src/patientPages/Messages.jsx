@@ -23,6 +23,9 @@ function Messages() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [monthAvailability, setMonthAvailability] = useState({});
 
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [callStatus, setCallStatus] = useState(null);
+
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -311,6 +314,33 @@ function Messages() {
     }
   };
 
+  const startCall = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/api/calls/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          doctor_id: selectedConversation.user_id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCallStatus(data);
+        showNotification('Call request sent!', 'success');
+      } else {
+        showNotification('Failed to start call', 'error');
+      }
+    } catch (error) {
+      console.error('Error starting call:', error);
+      showNotification('Error starting call', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ 
@@ -520,22 +550,41 @@ function Messages() {
                     </div>
                   </div>
                   
-                  <button
-                    onClick={() => setShowAppointmentModal(true)}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: '#00fbcd',
-                      color: '#1a1a1a',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    Set up Appointment
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      onClick={() => setShowAppointmentModal(true)}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#00fbcd',
+                        color: '#1a1a1a',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      Set up Appointment
+                    </button>
+                    
+                    <button
+                      onClick={startCall}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      📞 Start Call
+                    </button>
+                  </div>
                 </div>
               </div>
 

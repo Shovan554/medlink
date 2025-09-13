@@ -7,6 +7,7 @@ function Messages() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [callStatus, setCallStatus] = useState(null);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -48,9 +49,17 @@ function Messages() {
       if (response && response.ok) {
         const data = await response.json();
         console.log('Doctor conversations data:', data);
-        setConversations(data);
-        if (data.length > 0) {
-          setSelectedConversation(data[0]);
+        
+        // Sort conversations by last message time (most recent first)
+        const sortedConversations = data.sort((a, b) => {
+          const timeA = a.last_message_time ? new Date(a.last_message_time) : new Date(0);
+          const timeB = b.last_message_time ? new Date(b.last_message_time) : new Date(0);
+          return timeB - timeA;
+        });
+        
+        setConversations(sortedConversations);
+        if (sortedConversations.length > 0 && !selectedConversation) {
+          setSelectedConversation(sortedConversations[0]);
         }
       }
     } catch (error) {
@@ -116,6 +125,25 @@ function Messages() {
       // Remove the optimistic message if sending failed
       setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
       setNewMessage(messageContent); // Restore the message text
+    }
+  };
+
+  const startCall = async () => {
+    try {
+      const response = await authenticatedFetch('http://localhost:3001/api/calls/start', {
+        method: 'POST',
+        body: JSON.stringify({
+          patient_id: selectedConversation.user_id
+        }),
+      });
+
+      if (response && response.ok) {
+        const data = await response.json();
+        setCallStatus(data);
+        console.log('Call started:', data);
+      }
+    } catch (error) {
+      console.error('Error starting call:', error);
     }
   };
 
@@ -260,7 +288,7 @@ function Messages() {
                         color: 'rgba(255, 255, 255, 0.6)', 
                         fontSize: '12px' 
                       }}>
-                        {conversation.specialization}
+                        Patient
                       </p>
                     </div>
                   </div>
@@ -268,19 +296,30 @@ function Messages() {
                     <p style={{ 
                       margin: 0, 
                       color: 'rgba(255, 255, 255, 0.7)', 
-                      fontSize: '11px',
+                      fontSize: '12px',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: '200px'
+                      whiteSpace: 'nowrap'
                     }}>
-                      {conversation.last_message.length > 30 
-                        ? conversation.last_message.substring(0, 30) + '...' 
-                        : conversation.last_message}
+                      {conversation.last_message}
                     </p>
                   )}
                   {conversation.unread_count > 0 && (
-                    <div className="unread-badge">
+                    <div style={{
+                      position: 'absolute',
+                      right: '15px',
+                      top: '15px',
+                      backgroundColor: '#ff6b6b',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: '600'
+                    }}>
                       {conversation.unread_count}
                     </div>
                   )}
@@ -317,7 +356,7 @@ function Messages() {
                   }}>
                     {selectedConversation.first_name?.[0]}{selectedConversation.last_name?.[0]}
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <h3 style={{ 
                       margin: 0, 
                       color: 'rgba(255, 255, 255, 0.9)', 
@@ -333,6 +372,22 @@ function Messages() {
                       Patient
                     </p>
                   </div>
+                  <button
+                    onClick={startCall}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    📞 Start Call
+                  </button>
                 </div>
               </div>
 

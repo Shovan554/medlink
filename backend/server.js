@@ -7,11 +7,44 @@ import messagesRoutes from './routes/messages.js';
 import doctorRoutes from './routes/doctor.js';
 import appointmentRoutes from './routes/appointments.js';
 import reportsRoutes from './routes/reports.js';
+import trendsRoutes from './routes/trends.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
 import pool from './config/database.js';
 import axios from 'axios';
+import callsRoutes from './routes/calls.js';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Create HTTP server and Socket.IO after app is defined
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Make io available to routes
+app.set('io', io);
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('join-user', (userId) => {
+    socket.join(`user-${userId}`);
+    console.log(`User ${userId} joined room`);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
 
 // Helper functions for data normalization
 function normalizeSample(sample, units) {
@@ -156,9 +189,6 @@ async function upsertSleep(client, data) {
   return inserted;
 }
 
-const app = express();
-const PORT = process.env.PORT || 3001;
-
 // Health API configuration
 const HEALTH_API_BASE = process.env.HEALTH_API_BASE || 'http://127.0.0.1:9876/api';
 const HEALTH_API_TOKEN = process.env.HEALTH_API_TOKEN;
@@ -178,6 +208,8 @@ app.use('/api', messagesRoutes);
 app.use('/api/doctor', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/trends', trendsRoutes);
+app.use('/api/calls', callsRoutes);
 
 // Debug: List all registered routes
 console.log('Registered routes:');
@@ -406,6 +438,6 @@ app.post('/api/data', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

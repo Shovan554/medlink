@@ -1,0 +1,216 @@
+.trends-container {
+  padding: 20px;
+  background: transparent;
+  min-height: 100vh;
+  color: white;
+  width: 90%;
+  min-width: 1200px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.trends-container h1 {
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  text-align: center;
+  color: #00fbcd;
+}
+
+.trends-section {
+  margin-bottom: 60px;
+  background: transparent;
+  border-radius: 15px;
+  padding: 25px;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+}
+
+.trends-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 30px;
+  color: #00fbcd;
+  border-bottom: 2px solid rgba(0, 251, 205, 0.3);
+  padding-bottom: 10px;
+}
+
+.trends-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.trend-card {
+  background: rgba(9, 5, 113, 0.107);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s ease;
+  text-align: center;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  gap: 20px;
+  box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
+}
+
+.trend-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.451);
+}
+
+.trend-card h3 {
+  color: #00fbcd;
+  font-size: 1.1rem;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.trend-values {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.current-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+
+.current-value .value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.current-value .unit {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previous-value {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.trend-change {
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.trend-change.positive {
+  color: #00fbcd;
+  background: rgba(0, 251, 205, 0.15);
+}
+
+.trend-change.negative {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
+}
+
+.daily-comparison-chart {
+  background: rgba(9, 5, 113, 0.107);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s ease;
+  box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
+  width: 100%;
+  margin-top: 40px;
+}
+
+.daily-comparison-chart:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.451);
+}
+
+.daily-comparison-chart h3 {
+  color: #00fbcd;
+  font-size: 1.4rem;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.trends-loading, .trends-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.trends-error {
+  color: #ef4444;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .trends-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+  }
+  
+  .trend-card {
+    padding: 25px;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .trends-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .trend-card {
+    padding: 20px;
+    min-height: 140px;
+  }
+  
+  .current-value .value {
+    font-size: 2rem;
+  }
+  
+  .daily-comparison-chart {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .trend-card {
+    padding: 18px;
+    min-height: 120px;
+  }
+  
+  .current-value .value {
+    font-size: 1.8rem;
+  }
+  
+  .trend-card h3 {
+    font-size: 1rem;
+  }
+}

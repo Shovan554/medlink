@@ -54,6 +54,16 @@ MedLink solves this by **bringing continuous health monitoring and doctor-patien
 
 ---
 
+## 🔄 Data Flow: Apple Watch → MedLink
+1. **Apple Watch** collects health metrics (heart rate, SpO₂, HRV, wrist temp, steps, calories, etc.).  
+2. **Apple Health API / Health Auto Export** extracts data to the user’s device.  
+3. **MedLink Backend (Node.js/Express)** receives the data via secure API requests.  
+4. **PostgreSQL Database** stores data in `health_realtime` (immediate values) and `health_aggregated` (trends, summaries).  
+5. **Doctor’s Dashboard (React + Recharts)** visualizes the data, highlighting spikes or anomalies.  
+6. **Patient Portal** allows patients to see their metrics, while **alerts** notify doctors of concerning changes.  
+
+---
+
 ## 📊 Example Use Case
 - A patient reports chest discomfort.  
 - Doctor checks MedLink dashboard → sees stable heart rate but a spike in respiratory rate.  
@@ -77,3 +87,26 @@ npm run dev   # runs on http://localhost:3001
 cd ../frontend
 npm install
 npm run dev   # runs on http://localhost:3000
+
+Ensure PostgreSQL is running on localhost:5432 and update .env in backend/config with DB credentials.
+
+🤝 Contributing
+
+Fork the repo
+
+Create a feature branch (git checkout -b feature/new-feature)
+
+Commit changes (git commit -m "Add new feature")
+
+Push (git push origin feature/new-feature)
+
+Open a Pull Request
+
+📜 License
+
+MIT License – free to use, modify, and share.
+
+
+---
+
+👉 Do you want me to also design a **simple diagram (ASCII or mermaid)** of this data flow so the README has a visual pipeline (Watch → API → Server → DB → Dashboard)?
