@@ -1,0 +1,368 @@
+.reports-container {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+}
+
+.reports-container h1 {
+  color: #00fbcd;
+  font-size: 2.5rem;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.reports-controls {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: end;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.control-group label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.control-group select,
+.control-group input[type="date"] {
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 251, 205, 0.3);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.control-group select:focus,
+.control-group input[type="date"]:focus {
+  outline: none;
+  border-color: #00fbcd;
+  box-shadow: 0 0 0 2px rgba(0, 251, 205, 0.2);
+}
+
+.radio-group {
+  display: flex;
+  gap: 15px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.search-btn {
+  background: linear-gradient(135deg, #00fbcd, #00d4aa);
+  color: #1a1a1a;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: end;
+  white-space: nowrap;
+  min-width: 150px;
+}
+
+.search-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 251, 205, 0.3);
+}
+
+.search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.error-message {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.report-results {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.report-header h2 {
+  color: #00fbcd;
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.download-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.report-results h2 {
+  color: #00fbcd;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.report-summary {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: rgba(0, 251, 205, 0.1);
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.report-summary p {
+  margin: 5px 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.data-table {
+  overflow-x: auto;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.data-table table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+  padding: 16px 24px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.data-table th {
+  background: rgba(0, 251, 205, 0.2);
+  color: #00fbcd;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.data-table th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.data-table th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.data-table td {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Courier New', monospace;
+}
+
+.data-table tr:hover {
+  background: rgba(0, 251, 205, 0.05);
+}
+
+.data-table tr:last-child td:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+.data-table tr:last-child td:last-child {
+  border-bottom-right-radius: 8px;
+}
+
+/* Column specific styling */
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+  width: 25%;
+  min-width: 120px;
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+  width: 25%;
+  min-width: 100px;
+}
+
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+  width: 25%;
+  min-width: 100px;
+  text-align: right;
+  font-weight: 500;
+}
+
+.data-table th:nth-child(4),
+.data-table td:nth-child(4) {
+  width: 25%;
+  min-width: 80px;
+  text-align: center;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 20px 0;
+  width: 100%;
+}
+
+.pagination-btn {
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 251, 205, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 40px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: rgba(0, 251, 205, 0.1);
+  border-color: rgba(0, 251, 205, 0.5);
+}
+
+.pagination-btn.active {
+  background: rgba(0, 251, 205, 0.2);
+  border-color: #00fbcd;
+  color: #00fbcd;
+  font-weight: 600;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.pagination-dots {
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .reports-container {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reports-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .control-group {
+    min-width: 100%;
+  }
+  
+  .search-btn {
+    align-self: stretch;
+    margin-top: 10px;
+  }
+  
+  .data-table table {
+    min-width: 600px;
+  }
+  
+  .pagination {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  
+  .pagination-numbers {
+    order: 2;
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reports-container {
+    padding: 10px;
+  }
+  
+  .reports-container h1 {
+    font-size: 2rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,67 @@
+@font-face {
+  font-family: 'Title';
+  src: url('./assets/fonts/title.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Subtitle';
+  src: url('./assets/fonts/subtitle.ttf') format('truetype');
+}
+
+#root {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0rem;
+  text-align: center;
+background-image: linear-gradient(90deg, #0f1b3b 0%, #0b0303bc 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  margin-top: 80px; /* Navigation height */
+  padding: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navigation {
+    padding: 0 20px;
+  }
+  
+  .nav-list {
+    gap: 15px;
+  }
+  
+  .nav-link {
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+  
+  .nav-title {
+    font-size: 1.2rem;
+  }
+  
+  .nav-logo-container {
+    width: 40px;
+    height: 40px;
+  }
+}

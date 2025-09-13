@@ -1,0 +1,752 @@
+.patient-dashboard {
+  padding: 0px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.patient-dashboard-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.patient-dashboard-header h1 {
+  color: #00fbcd;
+  font-size: 2.5rem;
+  margin-bottom: 5px;
+}
+
+.patient-dashboard-header p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+}
+
+.patient-dashboard-loading, .patient-dashboard-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.patient-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 251, 205, 0.3);
+  border-top: 4px solid #00fbcd;
+  border-radius: 50%;
+  animation: patient-spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes patient-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Metrics Grid - Top Row for Small Metrics */
+.patient-top-row,
+.patient-bottom-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 40px;
+}
+
+.patient-top-row {
+  margin-bottom: 40px;
+}
+
+.patient-bottom-row {
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 900px) {
+  .patient-top-row,
+  .patient-bottom-row {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-top-row,
+  .patient-bottom-row {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+}
+
+/* Small Metric Cards - Rounded and Content-Fitted */
+.patient-metric-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border-radius: 28px; /* Increased from 20px */
+  padding: 20px; /* Reduced from 25px */
+  border: 1px solid rgba(10, 25, 67, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 16px; /* Reduced from 20px */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  min-height: auto; /* Remove fixed height */
+  max-height: none; /* Remove fixed height */
+  height: fit-content; /* Fit content */
+}
+
+.patient-metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 251, 205, 0.5), transparent);
+  border-radius: 28px 28px 0 0; /* Match card border radius */
+}
+
+.patient-metric-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 251, 205, 0.15);
+  border-color: rgba(0, 251, 205, 0.3);
+}
+
+.patient-metric-icon {
+  font-size: 2.2rem; /* Slightly reduced */
+  width: 60px; /* Reduced from 70px */
+  height: 60px; /* Reduced from 70px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 251, 205, 0.2), rgba(0, 251, 205, 0.1));
+  border-radius: 18px; /* More rounded */
+  border: 1px solid rgba(0, 251, 205, 0.3);
+  flex-shrink: 0;
+}
+
+.patient-metric-content {
+  flex: 1;
+  min-width: 0; /* Prevent overflow */
+}
+
+.patient-metric-content h3 {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem; /* Slightly smaller */
+  margin: 0 0 6px 0; /* Reduced margin */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.patient-metric-value {
+  color: #00fbcd;
+  font-size: 2rem; /* Reduced from 2.2rem */
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+  text-shadow: 0 0 15px rgba(0, 251, 205, 0.3);
+}
+
+.patient-metric-value .unit {
+  font-size: 0.75rem; /* Slightly smaller */
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+  margin-left: 4px; /* Reduced margin */
+}
+
+.patient-metric-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  margin: 6px 0 0 0;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 4px 8px;
+  background: rgba(0, 251, 205, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 251, 205, 0.15);
+  display: inline-block;
+  backdrop-filter: blur(10px);
+}
+
+.patient-metric-subtitle .avg-label {
+  color: rgba(0, 251, 205, 0.8);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.65rem;
+}
+
+.patient-metric-subtitle .avg-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Responsive for metrics grid */
+@media (max-width: 900px) {
+  .patient-metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-metrics-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+  
+  .patient-metric-card {
+    min-height: 100px;
+    max-height: 120px;
+    padding: 20px;
+  }
+  
+  .patient-metric-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+  
+  .patient-metric-value {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-metric-card {
+    flex-direction: column;
+    text-align: center;
+    min-height: 140px;
+    max-height: 160px;
+    gap: 15px;
+  }
+  
+  .patient-metric-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.8rem;
+  }
+}
+
+/* Sections */
+.patient-heart-rate-section,
+.patient-respiratory-rate-section,
+.patient-sleep-analysis-section {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  display: block;
+}
+
+/* Metric Cards */
+.patient-metric-card {
+  background: rgba(9, 5, 113, 0.107);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform 0.2s ease;
+  box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
+  min-height: 120px;
+  max-height: 140px;
+}
+
+.patient-metric-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.451);
+}
+
+.patient-metric-icon {
+  font-size: 2.5rem;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 15px;
+  background: rgba(0, 251, 205, 0.1);
+}
+
+.patient-metric-content h3 {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.patient-metric-value {
+  color: #00fbcd;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.patient-metric-value .unit {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 5px;
+}
+
+.patient-metric-subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-top: 5px;
+}
+
+/* Expanded Cards - Increased Height */
+.patient-heart-rate-expanded,
+.patient-respiratory-rate-expanded {
+  background: rgba(9, 5, 113, 0.107);
+  backdrop-filter: blur(10px);
+  border-radius: 32px; /* Increased from 24px */
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
+  min-height: 650px; /* Increased from 500px */
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-heart-rate-expanded:hover,
+.patient-respiratory-rate-expanded:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.451);
+}
+
+.patient-heart-rate-header,
+.patient-respiratory-rate-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Charts - Better Height Allocation */
+.patient-heart-rate-chart,
+.patient-respiratory-rate-chart {
+  width: 100%;
+  margin-top: 20px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 24px; /* Increased from 16px */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+  min-height: 420px; /* Added minimum height for charts */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Stats - Adjusted Positioning */
+.patient-heart-rate-stats,
+.patient-respiratory-rate-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 20px; /* Reduced from 30px */
+  padding: 20px; /* Reduced from 24px */
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 24px; /* Increased from 16px */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.patient-hr-stat {
+  text-align: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18px; /* Increased from 12px */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.patient-hr-label,
+.patient-respiratory-rate-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+
+.patient-hr-value,
+.patient-respiratory-rate-value {
+  color: #00fbcd;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Sleep Analysis */
+.patient-sleep-analysis-section {
+  background:rgba(9, 5, 113, 0.107);
+  backdrop-filter: blur(20px);
+  border-radius: 32px; /* Increased from 24px */
+  padding: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-height: 500px;
+  box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.patient-sleep-analysis-section::before {
+  border-radius: 32px 32px 0 0; /* Match card border radius */
+}
+
+.patient-sleep-analysis-section:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.451);
+}
+
+.patient-sleep-overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+.patient-sleep-summary-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28px; /* Increased from 20px */
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.patient-sleep-total {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.patient-sleep-total h3 {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.patient-sleep-time {
+  color: #00fbcd;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.patient-sleep-time .unit {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-left: 8px;
+}
+
+.patient-sleep-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.patient-sleep-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.patient-sleep-stage {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18px; /* Increased from 12px */
+}
+
+.patient-stage-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.patient-stage-color.deep { background: #3b82f6; }
+.patient-stage-color.core { background: #10b981; }
+.patient-stage-color.rem { background: #f59e0b; }
+
+.patient-stage-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.patient-stage-value {
+  color: white;
+  font-weight: 600;
+}
+
+.patient-stage-percent {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}
+
+.patient-sleep-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.patient-sleep-pie-chart {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28px; /* Increased from 20px */
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.patient-sleep-pie-chart h4 {
+  color: #00fbcd;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+}
+
+.patient-sleep-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.patient-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.patient-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.patient-sleep-quality-indicators {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 28px; /* Increased from 20px */
+  padding: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.patient-sleep-quality-indicators h4 {
+  color: #00fbcd;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.patient-quality-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.patient-quality-item {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.patient-quality-label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.patient-quality-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.patient-quality-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.patient-quality-fill.deep { background: #3b82f6; }
+.patient-quality-fill.rem { background: #f59e0b; }
+.patient-quality-fill.efficiency { background: #00fbcd; }
+
+.patient-quality-value {
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.patient-sleep-insights {
+  margin-top: 25px;
+}
+
+.patient-sleep-insights h4 {
+  color: #00fbcd;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.patient-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.patient-insight-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 24px; /* Increased from 16px */
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  transition: all 0.3s ease;
+}
+
+.patient-insight-icon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 251, 205, 0.1);
+  border-radius: 20px; /* Increased from 16px */
+  flex-shrink: 0;
+}
+
+.patient-insight-content h5 {
+  color: white;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.patient-insight-content p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* Error States */
+.patient-no-data-message,
+.patient-respiratory-rate-no-data-message {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 20px;
+  font-style: italic;
+}
+
+.patient-retry-button {
+  background: #00fbcd;
+  color: #1a1a1a;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+.patient-retry-button:hover {
+  background: #00d4aa;
+}
+
+.patient-error-help {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  margin-top: 15px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .patient-metrics-grid {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .patient-metrics-grid > .patient-metric-card {
+    flex: 0 1 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  .patient-metrics-grid > .patient-metric-card {
+    flex: 1 1 100%;
+    max-width: 420px;
+  }
+}
+
+/* Responsive adjustments for larger cards */
+@media (max-width: 768px) {
+  .patient-heart-rate-expanded,
+  .patient-respiratory-rate-expanded {
+    padding: 20px;
+    min-height: 550px; /* Adjusted for mobile */
+  }
+  
+  .patient-heart-rate-chart,
+  .patient-respiratory-rate-chart {
+    min-height: 350px; /* Adjusted for mobile */
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-heart-rate-expanded,
+  .patient-respiratory-rate-expanded {
+    min-height: 500px; /* Further adjusted for small screens */
+  }
+  
+  .patient-heart-rate-chart,
+  .patient-respiratory-rate-chart {
+    min-height: 300px;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .patient-metric-card {
+    padding: 16px; /* Reduced padding */
+    gap: 14px; /* Reduced gap */
+    border-radius: 24px; /* Slightly less rounded on mobile */
+  }
+  
+  .patient-metric-icon {
+    width: 50px; /* Reduced size */
+    height: 50px;
+    font-size: 1.8rem;
+    border-radius: 15px;
+  }
+  
+  .patient-metric-value {
+    font-size: 1.6rem; /* Reduced size */
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-metric-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+    gap: 12px;
+    border-radius: 20px;
+  }
+  
+  .patient-metric-icon {
+    width: 45px;
+    height: 45px;
+    font-size: 1.6rem;
+    border-radius: 12px;
+  }
+}
