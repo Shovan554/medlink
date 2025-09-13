@@ -42,7 +42,8 @@ function ProtectedRoute({ children }) {
   useEffect(() => {
     const hasVisitedLoading = sessionStorage.getItem('hasVisitedLoading')
     
-    if (!hasVisitedLoading) {
+    // Only redirect to loading page if we're on the root path and haven't visited loading
+    if (!hasVisitedLoading && location.pathname === '/') {
       navigate('/')
       return
     }

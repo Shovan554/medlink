@@ -285,7 +285,7 @@ router.get('/', authenticateToken, async (req, res) => {
         created_at,
         metadata
       FROM alerts 
-      WHERE user_id = $1 
+      WHERE user_id = $1 AND is_dismissed = FALSE
       ORDER BY created_at DESC
       LIMIT 50
     `, [userId]);

@@ -191,10 +191,10 @@ function Messages() {
       if (response && response.ok) {
         const data = await response.json();
         
-        // Add MedLink Assistant as first conversation
+        // Add Medlink Assistant as first conversation
         const aiConversation = {
           user_id: -1,
-          first_name: 'MedLink',
+          first_name: 'Medlink',
           last_name: 'Assistant',
           specialization: 'AI Clinical Assistant',
           last_message: 'Ask me about patient health data',
@@ -488,7 +488,7 @@ function Messages() {
                         fontSize: '14px',
                         fontWeight: '600'
                       }}>
-                        {conversation.user_id === -1 ? 'MedLink Assistant' : `${conversation.first_name} ${conversation.last_name}`}
+                        {conversation.user_id === -1 ? 'Medlink Assistant' : `${conversation.first_name} ${conversation.last_name}`}
                       </h4>
                       <p style={{ 
                         margin: 0, 
@@ -569,7 +569,7 @@ function Messages() {
                       color: 'rgba(255, 255, 255, 0.9)', 
                       fontSize: '18px' 
                     }}>
-                      {selectedConversation.user_id === -1 ? 'MedLink Assistant' : `${selectedConversation.first_name} ${selectedConversation.last_name}`}
+                      {selectedConversation.user_id === -1 ? 'Medlink Assistant' : `${selectedConversation.first_name} ${selectedConversation.last_name}`}
                     </h3>
                     <p style={{ 
                       margin: 0, 
@@ -615,7 +615,7 @@ function Messages() {
                     color: 'rgba(255, 255, 255, 0.6)', 
                     padding: '40px' 
                   }}>
-                    {isAiChat ? 'Ask MedLink Assistant about patient health data!' : 'No messages yet. Start a conversation with your patient!'}
+                    {isAiChat ? 'Ask Medlink Assistant about patient health data!' : 'No messages yet. Start a conversation with your patient!'}
                   </div>
                 ) : (
                   messages.map((message) => {
@@ -773,7 +773,7 @@ function Messages() {
                           fontWeight: '600',
                           fontSize: '14px'
                         }}>
-                          MedLink Assistant - Analyzing...
+                          Medlink Assistant - Analyzing...
                         </span>
                       </div>
                       

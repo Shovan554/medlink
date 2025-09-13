@@ -138,10 +138,10 @@ function Messages() {
         connectedDoctor = doctorData.doctor
       }
       
-      // Add MedLink AI as first conversation
+      // Add Medlink AI as first conversation
       const aiConversation = {
         user_id: 0,
-        first_name: 'MedLink',
+        first_name: 'Medlink',
         last_name: 'AI',
         specialization: 'AI Health Assistant',
         last_message: 'Ask me about your health data',
@@ -463,6 +463,73 @@ function Messages() {
     }
   };
 
+  const formatAiResponse = (content) => {
+    // Split the content into sections
+    const lines = content.split('\n').filter(line => line.trim());
+    
+    return lines.map((line, index) => {
+      const trimmedLine = line.trim();
+      
+      if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
+        // Bold headers
+        return (
+          <div key={index} style={{ 
+            color: '#00fbcd', 
+            fontWeight: '700', 
+            fontSize: '15px',
+            marginBottom: '8px',
+            marginTop: index > 0 ? '15px' : '0',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            {trimmedLine.slice(2, -2)}
+          </div>
+        );
+      } else if (trimmedLine.startsWith('- ')) {
+        // Bullet points
+        return (
+          <div key={index} style={{ 
+            display: 'flex', 
+            alignItems: 'flex-start', 
+            marginBottom: '6px',
+            paddingLeft: '10px'
+          }}>
+            <span style={{ color: '#00fbcd', marginRight: '8px', fontSize: '12px' }}>•</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.9)', lineHeight: '1.5' }}>
+              {trimmedLine.slice(2)}
+            </span>
+          </div>
+        );
+      } else if (trimmedLine.includes(':') && trimmedLine.length < 50) {
+        // Section headers (like "Recommendations:", "Assessment:")
+        return (
+          <div key={index} style={{ 
+            color: '#4f46e5', 
+            fontWeight: '600', 
+            fontSize: '14px',
+            marginBottom: '8px',
+            marginTop: index > 0 ? '15px' : '0',
+            borderLeft: '3px solid #4f46e5',
+            paddingLeft: '10px'
+          }}>
+            {trimmedLine}
+          </div>
+        );
+      } else {
+        // Regular text
+        return (
+          <div key={index} style={{ 
+            marginBottom: '8px',
+            color: 'rgba(255, 255, 255, 0.9)',
+            lineHeight: '1.6'
+          }}>
+            {trimmedLine}
+          </div>
+        );
+      }
+    });
+  };
+
   if (loading) {
     return (
       <div style={{ 
@@ -587,7 +654,7 @@ function Messages() {
                         fontSize: '14px',
                         fontWeight: '600'
                       }}>
-                        {conversation.user_id === 0 ? 'MedLink AI' : `Dr. ${conversation.first_name} ${conversation.last_name}`}
+                        {conversation.user_id === 0 ? 'Medlink AI' : `Dr. ${conversation.first_name} ${conversation.last_name}`}
                       </h4>
                       <p style={{ 
                         margin: 0, 
@@ -650,7 +717,7 @@ function Messages() {
                         color: 'rgba(255, 255, 255, 0.9)', 
                         fontSize: '18px' 
                       }}>
-                        {selectedConversation.user_id === 0 ? 'MedLink AI' : `Dr. ${selectedConversation.first_name} ${selectedConversation.last_name}`}
+                        {selectedConversation.user_id === 0 ? 'Medlink AI' : `Dr. ${selectedConversation.first_name} ${selectedConversation.last_name}`}
                       </h3>
                       <p style={{ 
                         margin: 0, 
@@ -717,7 +784,7 @@ function Messages() {
                     color: 'rgba(255, 255, 255, 0.6)', 
                     padding: '40px' 
                   }}>
-                    {isAiChat ? 'Ask MedLink AI about your health data!' : 'No messages yet. Start a conversation!'}
+                    {isAiChat ? 'Ask Medlink AI about your health data!' : 'No messages yet. Start a conversation!'}
                   </div>
                 ) : (
                   messages.map((message) => {
@@ -735,21 +802,57 @@ function Messages() {
                       >
                         <div
                           style={{
-                            maxWidth: '70%',
-                            padding: '12px 16px',
-                            borderRadius: '18px',
-                            backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? '#4f46e5' : 'rgba(255, 255, 255, 0.1)'),
+                            maxWidth: isAiMessage ? '85%' : '70%',
+                            padding: isAiMessage ? '20px' : '12px 16px',
+                            borderRadius: isAiMessage ? '12px' : '18px',
+                            backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? 'rgba(79, 70, 229, 0.1)' : 'rgba(255, 255, 255, 0.1)'),
                             color: isMyMessage ? '#1a1a1a' : 'white',
-                            border: isMyMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
+                            border: isMyMessage ? 'none' : (isAiMessage ? '1px solid rgba(79, 70, 229, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)'),
                             textAlign: 'left'
                           }}
                         >
-                          <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>{message.content}</p>
+                          {isAiMessage && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              marginBottom: '15px',
+                              paddingBottom: '10px',
+                              borderBottom: '1px solid rgba(79, 70, 229, 0.2)'
+                            }}>
+                              <span style={{
+                                fontSize: '16px',
+                                marginRight: '8px'
+                              }}>
+                                🤖
+                              </span>
+                              <span style={{
+                                color: '#4f46e5',
+                                fontWeight: '600',
+                                fontSize: '14px'
+                              }}>
+                                Medlink AI Health Analysis
+                              </span>
+                            </div>
+                          )}
+                          
+                          {isAiMessage ? (
+                            <div style={{ 
+                              fontSize: '14px',
+                              lineHeight: '1.6'
+                            }}>
+                              {formatAiResponse(message.content)}
+                            </div>
+                          ) : (
+                            <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>{message.content}</p>
+                          )}
+                          
                           <p style={{
-                            margin: 0,
+                            margin: isAiMessage ? '15px 0 0 0' : '0',
                             fontSize: '11px',
                             opacity: 0.7,
-                            textAlign: 'right'
+                            textAlign: 'right',
+                            borderTop: isAiMessage ? '1px solid rgba(79, 70, 229, 0.2)' : 'none',
+                            paddingTop: isAiMessage ? '10px' : '0'
                           }}>
                             {new Date(message.created_at).toLocaleTimeString()}
                           </p>
@@ -789,7 +892,7 @@ function Messages() {
                           fontWeight: '600',
                           fontSize: '14px'
                         }}>
-                          MedLink AI is thinking...
+                          Medlink AI is thinking...
                         </span>
                       </div>
                       
