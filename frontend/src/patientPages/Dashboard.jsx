@@ -107,18 +107,18 @@ function Dashboard() {
       
       // Fetch all dashboard data in parallel
       const responses = await Promise.allSettled([
-        fetch(`${API_BASE_URL}/health-data/heart-rate/current`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/heart-rate/today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/heart-rate/average-today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/respiratory-rate/current`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/respiratory-rate/today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/steps/today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/daylight/today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/sleep/latest`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/energy/today`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/spo2/current`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/hrv/current`, { headers }),
-        fetch(`${API_BASE_URL}/health-data/temperature/current`, { headers })
+        fetch(`${API_BASE_URL}/health/heart-rate/current`, { headers }),
+        fetch(`${API_BASE_URL}/health/heart-rate/today`, { headers }),
+        fetch(`${API_BASE_URL}/health/heart-rate/average-today`, { headers }),
+        fetch(`${API_BASE_URL}/health/respiratory-rate/current`, { headers }),
+        fetch(`${API_BASE_URL}/health/respiratory-rate/today`, { headers }),
+        fetch(`${API_BASE_URL}/health/steps/today`, { headers }),
+        fetch(`${API_BASE_URL}/health/daylight/today`, { headers }),
+        fetch(`${API_BASE_URL}/health/sleep/latest`, { headers }),
+        fetch(`${API_BASE_URL}/health/energy/today`, { headers }),
+        fetch(`${API_BASE_URL}/health/spo2/current`, { headers }),
+        fetch(`${API_BASE_URL}/health/hrv/current`, { headers }),
+        fetch(`${API_BASE_URL}/health/temperature/current`, { headers })
       ])
 
       // Process responses

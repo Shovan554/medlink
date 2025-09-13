@@ -27,7 +27,7 @@ const authenticateToken = (req, res, next) => {
 };
 
 // GET AI conversation history
-router.get('/ai/conversations', authenticateToken, async (req, res) => {
+router.get('/conversations', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     
@@ -45,7 +45,7 @@ router.get('/ai/conversations', authenticateToken, async (req, res) => {
 });
 
 // POST send message to AI
-router.post('/ai/chat', authenticateToken, async (req, res) => {
+router.post('/chat', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { message } = req.body;

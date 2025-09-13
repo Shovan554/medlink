@@ -4,6 +4,8 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
+console.log('Settings routes loaded');
+
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -24,8 +26,10 @@ const authenticateToken = (req, res, next) => {
 
 // GET patient profile
 router.get('/patients/profile', authenticateToken, async (req, res) => {
+  console.log('Patient profile route hit');
   try {
     const userId = req.user.userId;
+    console.log('User ID:', userId);
     
     const result = await pool.query(
       'SELECT mrn, blood_type, height_cm, weight_kg FROM patients WHERE user_id = $1',
@@ -202,6 +206,27 @@ router.post('/patients/connect-doctor', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error connecting to doctor:', error);
     res.status(500).json({ error: 'Failed to connect to doctor' });
+  }
+});
+
+// GET user by ID
+router.get('/users/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const result = await pool.query(
+      'SELECT user_id, first_name, last_name, email, role FROM users WHERE user_id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
 

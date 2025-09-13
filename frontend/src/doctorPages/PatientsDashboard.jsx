@@ -49,10 +49,60 @@ function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedAppointment, setSelectedAppointment] = useState(null)
   const [showAppointmentModal, setShowAppointmentModal] = useState(false)
+  const [showAlertsModal, setShowAlertsModal] = useState(false)
+  const [pendingAlerts, setPendingAlerts] = useState([])
+  const [loadingAlerts, setLoadingAlerts] = useState(false)
 
   const viewAppointmentDetails = (appointment) => {
     setSelectedAppointment(appointment)
     setShowAppointmentModal(true)
+  }
+
+  const viewPendingAlerts = async () => {
+    setLoadingAlerts(true)
+    setShowAlertsModal(true)
+    
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch('http://localhost:3001/api/doctor/alerts/pending', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const alerts = await response.json()
+        setPendingAlerts(alerts)
+      }
+    } catch (error) {
+      console.error('Error fetching pending alerts:', error)
+    } finally {
+      setLoadingAlerts(false)
+    }
+  }
+
+  const markAlertAsRead = async (alertId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`http://localhost:3001/api/doctor/alerts/${alertId}/read`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        setPendingAlerts(prev => prev.map(alert => 
+          alert.alert_id === alertId ? { ...alert, is_read: true } : alert
+        ))
+        // Refresh dashboard data to update pending alerts count
+        fetchDashboardData()
+      }
+    } catch (error) {
+      console.error('Error marking alert as read:', error)
+    }
   }
 
   useEffect(() => {
@@ -95,7 +145,7 @@ function Dashboard() {
       const [appointmentsRes, patientsRes, conversationsRes] = await Promise.all([
         fetch('http://localhost:3001/api/appointments/doctor', { headers }),
         fetch('http://localhost:3001/api/doctor/patients', { headers }),
-        fetch('http://localhost:3001/api/conversations', { headers })
+        fetch('http://localhost:3001/api/messages/conversations', { headers })
       ])
 
       const appointments = appointmentsRes.ok ? await appointmentsRes.json() : []
@@ -236,14 +286,7 @@ function Dashboard() {
             <div className="stat-value">{dashboardData.stats.totalPatients}</div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">📅</div>
-          <div className="stat-content">
-            <h3>Today's Appointments</h3>
-            <div className="stat-value">{dashboardData.stats.todayAppointments}</div>
-          </div>
-        </div>
-        <div className="stat-card">
+        <div className="stat-card" onClick={dashboardData.stats.pendingAlerts > 0 ? viewPendingAlerts : undefined} style={{ cursor: dashboardData.stats.pendingAlerts > 0 ? 'pointer' : 'default' }}>
           <div className="stat-icon">⚠️</div>
           <div className="stat-content">
             <h3>Pending Alerts</h3>
@@ -339,7 +382,12 @@ function Dashboard() {
           <h2>Pending Tasks</h2>
           <div className="tasks-list">
             {dashboardData.pendingTasks.map(task => (
-              <div key={task.id} className="task-card">
+              <div 
+                key={task.id} 
+                className="task-card"
+                onClick={task.count > 0 ? viewPendingAlerts : undefined}
+                style={{ cursor: task.count > 0 ? 'pointer' : 'default' }}
+              >
                 <div className="task-info">
                   <h4>{task.title}</h4>
                   <span className="task-count" style={{ color: getPriorityColor(task.priority) }}>
@@ -397,6 +445,87 @@ function Dashboard() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerts Modal */}
+      {showAlertsModal && (
+        <div className="modal-overlay" onClick={() => setShowAlertsModal(false)}>
+          <div className="modal-content alerts-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Pending Patient Alerts</h2>
+              <button 
+                className="modal-close"
+                onClick={() => setShowAlertsModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              {loadingAlerts ? (
+                <div className="alerts-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading alerts...</p>
+                </div>
+              ) : pendingAlerts.length === 0 ? (
+                <div className="no-alerts">
+                  <p>No pending alerts to review</p>
+                </div>
+              ) : (
+                <div className="alerts-list">
+                  {pendingAlerts.map(alert => (
+                    <div key={alert.alert_id} className={`alert-card ${alert.severity}`}>
+                      <div className="alert-header">
+                        <div className="alert-patient">
+                          <h4>{alert.patient_name}</h4>
+                          <span className="alert-time">
+                            {new Date(alert.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="alert-severity">
+                          <span className={`severity-badge ${alert.severity}`}>
+                            {alert.severity.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="alert-content">
+                        <h3>{alert.title}</h3>
+                        <p>{alert.message}</p>
+                        
+                        {alert.metadata && Object.keys(alert.metadata).length > 0 && (
+                          <div className="alert-metadata">
+                            <strong>Details:</strong>
+                            <ul>
+                              {Object.entries(alert.metadata).map(([key, value]) => (
+                                <li key={key}>
+                                  <span>{key.replace(/_/g, ' ')}:</span>
+                                  <span>{value}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="alert-actions">
+                        {alert.is_read ? (
+                          <span className="read-status">✅ Reviewed</span>
+                        ) : (
+                          <button 
+                            className="mark-read-btn"
+                            onClick={() => markAlertAsRead(alert.alert_id)}
+                          >
+                            Mark as Read
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

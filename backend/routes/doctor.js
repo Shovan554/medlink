@@ -43,6 +43,7 @@ router.get('/patients', authenticateToken, async (req, res) => {
           COUNT(*) as alert_count 
         FROM alerts 
         WHERE is_dismissed = FALSE 
+          AND is_read = FALSE
         GROUP BY user_id
       ) alert_counts ON u.user_id = alert_counts.user_id
       WHERE d.user_id = $1
@@ -292,32 +293,38 @@ Medication considerations (clinician judgment only): short-term beta-blocker if 
 
     let aiResponse = 'Unable to process clinical data at this time.';
     
-    try {
-      const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
+    // Check if API key is configured
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
+      aiResponse = 'AI service is not configured. Please contact your administrator.';
+    } else {
+      try {
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: prompt
+              }]
             }]
-          }]
-        })
-      });
+          })
+        });
 
-      if (geminiResponse.ok) {
-        const geminiData = await geminiResponse.json();
-        aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to process clinical data at this time.';
-      } else {
-        const errorText = await geminiResponse.text();
-        console.error('Gemini API error:', geminiResponse.status, errorText);
-        aiResponse = 'I\'m having trouble connecting to my AI service right now. Please try again in a moment.';
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to process clinical data at this time.';
+        } else {
+          const errorText = await geminiResponse.text();
+          console.error('Gemini API error:', geminiResponse.status, errorText);
+          aiResponse = 'I\'m having trouble connecting to my AI service right now. Please try again in a moment.';
+        }
+      } catch (apiError) {
+        console.error('Gemini API call failed:', apiError);
+        aiResponse = 'I\'m experiencing technical difficulties. Please try again later.';
       }
-    } catch (apiError) {
-      console.error('Gemini API call failed:', apiError);
-      aiResponse = 'I\'m experiencing technical difficulties. Please try again later.';
     }
 
     // Store AI response
@@ -334,6 +341,63 @@ Medication considerations (clinician judgment only): short-term beta-blocker if 
   } catch (error) {
     console.error('Error processing doctor AI chat:', error);
     res.status(500).json({ error: 'Failed to process AI chat' });
+  }
+});
+
+// GET pending alerts for doctor
+router.get('/alerts/pending', authenticateToken, async (req, res) => {
+  try {
+    const doctorUserId = req.user.userId;
+    
+    const result = await pool.query(`
+      SELECT 
+        a.alert_id,
+        a.alert_type,
+        a.title,
+        a.message,
+        a.severity,
+        a.is_read,
+        a.created_at,
+        a.metadata,
+        CONCAT(u.first_name, ' ', u.last_name) as patient_name
+      FROM alerts a
+      JOIN doctors d ON a.doctor_id = d.doctor_id
+      JOIN users u ON a.user_id = u.user_id
+      WHERE d.user_id = $1 
+        AND a.is_dismissed = FALSE
+        AND a.is_read = FALSE
+      ORDER BY a.created_at DESC
+    `, [doctorUserId]);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching pending alerts:', error);
+    res.status(500).json({ error: 'Failed to fetch pending alerts' });
+  }
+});
+
+// PUT mark alert as read by doctor
+router.put('/alerts/:alertId/read', authenticateToken, async (req, res) => {
+  try {
+    const { alertId } = req.params;
+    const doctorUserId = req.user.userId;
+
+    // Verify this alert belongs to this doctor
+    const result = await pool.query(`
+      UPDATE alerts 
+      SET is_read = true 
+      WHERE alert_id = $1 
+        AND doctor_id = (SELECT doctor_id FROM doctors WHERE user_id = $2)
+    `, [alertId, doctorUserId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Alert not found or unauthorized' });
+    }
+
+    res.json({ message: 'Alert marked as read' });
+  } catch (error) {
+    console.error('Error marking alert as read:', error);
+    res.status(500).json({ error: 'Failed to mark alert as read' });
   }
 });
 

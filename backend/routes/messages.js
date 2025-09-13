@@ -22,126 +22,89 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// GET conversations for current user
-router.get('/conversations', authenticateToken, async (req, res) => {
+// GET connected doctor for current patient (MUST be before /:userId route)
+router.get('/connected-doctor', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Get existing conversations with last message and unread count
-    const conversationsResult = await pool.query(`
-      SELECT DISTINCT 
-        CASE 
-          WHEN m.sender_id = $1 THEN m.receiver_id 
-          ELSE m.sender_id 
-        END as user_id,
-        u.first_name,
-        u.last_name,
-        u.email,
-        d.specialization,
-        (
-          SELECT content 
-          FROM messages m2 
-          WHERE (m2.sender_id = $1 AND m2.receiver_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
-             OR (m2.receiver_id = $1 AND m2.sender_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
-          ORDER BY m2.created_at DESC 
-          LIMIT 1
-        ) as last_message,
-        (
-          SELECT created_at 
-          FROM messages m2 
-          WHERE (m2.sender_id = $1 AND m2.receiver_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
-             OR (m2.receiver_id = $1 AND m2.sender_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END)
-          ORDER BY m2.created_at DESC 
-          LIMIT 1
-        ) as last_message_time,
-        (
-          SELECT COUNT(*) 
-          FROM messages m3 
-          WHERE m3.sender_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
-            AND m3.receiver_id = $1 
-            AND m3.is_read = false
-        ) as unread_count
-      FROM messages m
-      JOIN users u ON u.user_id = CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
-      LEFT JOIN doctors d ON u.user_id = d.user_id
-      WHERE m.sender_id = $1 OR m.receiver_id = $1
-      ORDER BY last_message_time DESC
-    `, [userId]);
-
-    // Get connected doctor if user is a patient
-    const connectedDoctorResult = await pool.query(`
-      SELECT u.user_id, u.first_name, u.last_name, u.email, d.specialization
+    const result = await pool.query(`
+      SELECT u.user_id, u.first_name, u.last_name, u.email, d.specialization, d.license_no
       FROM patients p
       JOIN doctors d ON p.doctor_id = d.doctor_id
       JOIN users u ON d.user_id = u.user_id
       WHERE p.user_id = $1 AND p.doctor_id IS NOT NULL
     `, [userId]);
 
-    // Get connected patients if user is a doctor
-    const connectedPatientsResult = await pool.query(`
-      SELECT u.user_id, u.first_name, u.last_name, u.email
-      FROM doctors d
-      JOIN patients p ON d.doctor_id = p.doctor_id
-      JOIN users u ON p.user_id = u.user_id
-      WHERE d.user_id = $1
+    if (result.rows.length === 0) {
+      return res.json({ doctor: null });
+    }
+
+    res.json({ doctor: result.rows[0] });
+  } catch (error) {
+    console.error('Error fetching connected doctor:', error);
+    res.status(500).json({ error: 'Failed to fetch connected doctor' });
+  }
+});
+
+// GET conversations for current user
+router.get('/conversations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get conversations where user is either sender or receiver
+    const conversationsResult = await pool.query(`
+      WITH latest_messages AS (
+        SELECT 
+          CASE 
+            WHEN sender_id = $1 THEN receiver_id
+            ELSE sender_id
+          END as other_user_id,
+          content as last_message,
+          created_at as last_message_time,
+          ROW_NUMBER() OVER (
+            PARTITION BY CASE 
+              WHEN sender_id = $1 THEN receiver_id
+              ELSE sender_id
+            END 
+            ORDER BY created_at DESC
+          ) as rn
+        FROM messages 
+        WHERE sender_id = $1 OR receiver_id = $1
+      ),
+      unread_counts AS (
+        SELECT 
+          sender_id as other_user_id,
+          COUNT(*) as unread_count
+        FROM messages 
+        WHERE receiver_id = $1 AND is_read = false
+        GROUP BY sender_id
+      )
+      SELECT 
+        lm.other_user_id as user_id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        COALESCE(d.specialization, 'Patient') as specialization,
+        lm.last_message,
+        lm.last_message_time,
+        COALESCE(uc.unread_count, 0) as unread_count
+      FROM latest_messages lm
+      JOIN users u ON lm.other_user_id = u.user_id
+      LEFT JOIN doctors d ON u.user_id = d.user_id
+      LEFT JOIN unread_counts uc ON lm.other_user_id = uc.other_user_id
+      WHERE lm.rn = 1
+      ORDER BY lm.last_message_time DESC
     `, [userId]);
 
-    let conversations = conversationsResult.rows;
-
-    // If user has a connected doctor, ensure they appear in conversations
-    if (connectedDoctorResult.rows.length > 0) {
-      const connectedDoctor = connectedDoctorResult.rows[0];
-      
-      // Check if doctor is already in conversations
-      const doctorExists = conversations.find(conv => conv.user_id === connectedDoctor.user_id);
-      
-      if (!doctorExists) {
-        // Add connected doctor with empty conversation
-        conversations.unshift({
-          user_id: connectedDoctor.user_id,
-          first_name: connectedDoctor.first_name,
-          last_name: connectedDoctor.last_name,
-          email: connectedDoctor.email,
-          specialization: connectedDoctor.specialization,
-          last_message: 'Start a conversation with your doctor',
-          last_message_time: null,
-          unread_count: 0
-        });
-      }
-    }
-
-    // If user is a doctor with connected patients, ensure they appear in conversations
-    if (connectedPatientsResult.rows.length > 0) {
-      const connectedPatients = connectedPatientsResult.rows;
-      
-      connectedPatients.forEach(patient => {
-        // Check if patient is already in conversations
-        const patientExists = conversations.find(conv => conv.user_id === patient.user_id);
-        
-        if (!patientExists) {
-          // Add connected patient with empty conversation
-          conversations.unshift({
-            user_id: patient.user_id,
-            first_name: patient.first_name,
-            last_name: patient.last_name,
-            email: patient.email,
-            last_message: 'Start a conversation with your patient',
-            last_message_time: null,
-            unread_count: 0
-          });
-        }
-      });
-    }
-
-    res.json(conversations);
+    res.json(conversationsResult.rows);
   } catch (error) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 
-// GET messages between current user and another user
-router.get('/messages/:userId', authenticateToken, async (req, res) => {
+// GET messages between current user and another user (MUST be after specific routes)
+router.get('/:userId', authenticateToken, async (req, res) => {
   try {
     const currentUserId = req.user.userId;
     const otherUserId = req.params.userId;
@@ -175,7 +138,7 @@ router.get('/messages/:userId', authenticateToken, async (req, res) => {
 });
 
 // POST send a new message
-router.post('/messages', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const senderId = req.user.userId;
     const { content, receiver_id } = req.body;
@@ -185,8 +148,8 @@ router.post('/messages', authenticateToken, async (req, res) => {
     }
 
     const result = await pool.query(`
-      INSERT INTO messages (sender_id, receiver_id, content, created_at)
-      VALUES ($1, $2, $3, NOW())
+      INSERT INTO messages (sender_id, receiver_id, content, created_at, is_read)
+      VALUES ($1, $2, $3, NOW(), false)
       RETURNING *
     `, [senderId, receiver_id, content]);
 

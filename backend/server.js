@@ -15,6 +15,7 @@ import pool from './config/database.js';
 import axios from 'axios';
 import callsRoutes from './routes/calls.js';
 import aiRoutes from './routes/ai.js';
+import alertsRoutes from './routes/alerts.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
@@ -202,16 +203,16 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', authRoutes); // This will make /api/users/:id work
-app.use('/api/health-data', healthDataRoutes);
-app.use('/api', settingsRoutes);
-app.use('/api', messagesRoutes);
-app.use('/api/doctor', doctorRoutes);
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/reports', reportsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/health', healthDataRoutes);
 app.use('/api/trends', trendsRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/doctor', doctorRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/alerts', alertsRoutes);
 app.use('/api/calls', callsRoutes);
-app.use('/api', aiRoutes);
+app.use('/api/appointments', appointmentRoutes);
+app.use('/api', settingsRoutes);
 
 // Debug: List all registered routes
 console.log('Registered routes:');

@@ -13,6 +13,7 @@ function Messages() {
   // AI-specific state
   const [aiMessages, setAiMessages] = useState([]);
   const [isAiChat, setIsAiChat] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointmentType, setAppointmentType] = useState('');
@@ -82,7 +83,9 @@ function Messages() {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   useEffect(() => {
@@ -111,26 +114,66 @@ function Messages() {
     }
   }, [selectedConversation, aiMessages]);
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isAiTyping]);
+
   const fetchConversations = async () => {
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/conversations')
+      // Fetch existing conversations
+      const conversationsResponse = await authenticatedFetch('http://localhost:3001/api/messages/conversations')
       
-      if (response && response.ok) {
-        const data = await response.json()
-        
-        // Add MedLink AI as first conversation
-        const aiConversation = {
-          user_id: 0,
-          first_name: 'MedLink',
-          last_name: 'AI',
-          specialization: 'AI Health Assistant',
-          last_message: 'Ask me about your health data',
-          last_message_time: new Date().toISOString(),
-          unread_count: 0
-        };
-        
-        setConversations([aiConversation, ...data])
+      // Fetch connected doctor from messages endpoint
+      const doctorResponse = await authenticatedFetch('http://localhost:3001/api/messages/connected-doctor')
+      
+      let conversations = [];
+      let connectedDoctor = null;
+      
+      if (conversationsResponse && conversationsResponse.ok) {
+        conversations = await conversationsResponse.json()
       }
+      
+      if (doctorResponse && doctorResponse.ok) {
+        const doctorData = await doctorResponse.json()
+        connectedDoctor = doctorData.doctor
+      }
+      
+      // Add MedLink AI as first conversation
+      const aiConversation = {
+        user_id: 0,
+        first_name: 'MedLink',
+        last_name: 'AI',
+        specialization: 'AI Health Assistant',
+        last_message: 'Ask me about your health data',
+        last_message_time: new Date().toISOString(),
+        unread_count: 0
+      };
+      
+      let allConversations = [aiConversation];
+      
+      // Add connected doctor if exists and not already in conversations
+      if (connectedDoctor) {
+        const doctorExists = conversations.find(conv => conv.user_id === connectedDoctor.user_id);
+        
+        if (!doctorExists) {
+          // Add doctor as a conversation even if no messages exist
+          const doctorConversation = {
+            user_id: connectedDoctor.user_id,
+            first_name: connectedDoctor.first_name,
+            last_name: connectedDoctor.last_name,
+            specialization: connectedDoctor.specialization || 'General Practice',
+            last_message: 'Start a conversation with your doctor',
+            last_message_time: new Date().toISOString(),
+            unread_count: 0
+          };
+          allConversations.push(doctorConversation);
+        }
+      }
+      
+      // Add existing conversations
+      allConversations = [...allConversations, ...conversations];
+      
+      setConversations(allConversations)
     } catch (error) {
       console.error('Error fetching conversations:', error)
     } finally {
@@ -189,6 +232,7 @@ function Messages() {
       
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
+      setIsAiTyping(true); // Start typing animation
 
       try {
         const response = await authenticatedFetch('http://localhost:3001/api/ai/chat', {
@@ -212,14 +256,17 @@ function Messages() {
           
           // Update messages and AI messages state
           setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false); // Stop typing animation
           fetchAiConversations(); // Refresh AI conversations to get latest from DB
         } else {
           setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false);
           setNewMessage(messageContent);
         }
       } catch (error) {
         console.error('Error sending AI message:', error);
         setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+        setIsAiTyping(false);
         setNewMessage(messageContent);
       }
     } else {
@@ -693,10 +740,11 @@ function Messages() {
                             borderRadius: '18px',
                             backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? '#4f46e5' : 'rgba(255, 255, 255, 0.1)'),
                             color: isMyMessage ? '#1a1a1a' : 'white',
-                            border: isMyMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.2)'
+                            border: isMyMessage ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
+                            textAlign: 'left'
                           }}
                         >
-                          <p style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{message.content}</p>
+                          <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>{message.content}</p>
                           <p style={{
                             margin: 0,
                             fontSize: '11px',
@@ -710,6 +758,87 @@ function Messages() {
                     );
                   })
                 )}
+                
+                {/* AI Typing Indicator */}
+                {isAiTyping && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'flex-start'
+                  }}>
+                    <div style={{
+                      maxWidth: '70%',
+                      padding: '16px 20px',
+                      borderRadius: '18px',
+                      backgroundColor: '#4f46e5',
+                      color: 'white',
+                      border: 'none',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '16px'
+                        }}>
+                          🤖
+                        </span>
+                        <span style={{
+                          fontWeight: '600',
+                          fontSize: '14px'
+                        }}>
+                          MedLink AI is thinking...
+                        </span>
+                      </div>
+                      
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: '4px'
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0s'
+                          }}></div>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0.2s'
+                          }}></div>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            animation: 'typing-dot 1.4s infinite ease-in-out',
+                            animationDelay: '0.4s'
+                          }}></div>
+                        </div>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontStyle: 'italic',
+                          opacity: 0.9
+                        }}>
+                          Analyzing your health data...
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div ref={messagesEndRef} />
               </div>
 

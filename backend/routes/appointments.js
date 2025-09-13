@@ -248,20 +248,31 @@ router.get('/patient', authenticateToken, async (req, res) => {
   }
 });
 
-// GET doctor's appointments
+// GET doctor's appointments (with debugging)
 router.get('/doctor', authenticateToken, async (req, res) => {
   try {
-    const doctorId = req.user.userId;
+    const doctorUserId = req.user.userId;
+    console.log('Doctor user ID:', doctorUserId);
     
+    // First, let's see what appointments exist
+    const allAppointments = await pool.query('SELECT * FROM appointments LIMIT 5');
+    console.log('Sample appointments:', allAppointments.rows);
+    
+    // Check if user is in doctors table
+    const doctorCheck = await pool.query('SELECT * FROM doctors WHERE user_id = $1', [doctorUserId]);
+    console.log('Doctor check:', doctorCheck.rows);
+    
+    // Try direct lookup first
     const result = await pool.query(
       `SELECT a.*, u.first_name, u.last_name, u.email
        FROM appointments a
        JOIN users u ON a.patient_id = u.user_id
        WHERE a.doctor_id = $1
        ORDER BY a.appointment_date DESC, a.start_time DESC`,
-      [doctorId]
+      [doctorUserId]
     );
 
+    console.log('Appointments found:', result.rows.length);
     res.json(result.rows);
   } catch (error) {
     console.error('Error fetching doctor appointments:', error);

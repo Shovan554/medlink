@@ -14,151 +14,144 @@ function Messages() {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const formatAiResponse = (content) => {
     // Split the content into sections
     const lines = content.split('\n').filter(line => line.trim());
     
-    return (
-      <div>
-        {lines.map((line, index) => {
-          const trimmedLine = line.trim();
-          
-          // Assessment section
-          if (trimmedLine.startsWith('Assessment:')) {
-            return (
-              <div key={index} style={{ marginBottom: '12px' }}>
-                <div style={{
-                  color: '#4f46e5',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  marginBottom: '4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Assessment
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.95)',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  borderLeft: '3px solid #4f46e5'
-                }}>
-                  {trimmedLine.replace('Assessment:', '').trim()}
-                </div>
-              </div>
-            );
-          }
-          
-          // Key Data section
-          if (trimmedLine.startsWith('Key Data:')) {
-            return (
-              <div key={index} style={{ marginBottom: '12px' }}>
-                <div style={{
-                  color: '#00fbcd',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  marginBottom: '4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Key Data
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  fontSize: '14px',
-                  backgroundColor: 'rgba(0, 251, 205, 0.1)',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  borderLeft: '3px solid #00fbcd',
-                  fontFamily: 'monospace'
-                }}>
-                  {trimmedLine.replace('Key Data:', '').trim()}
-                </div>
-              </div>
-            );
-          }
-          
-          // Recommendations section
-          if (trimmedLine.startsWith('Recommendations:')) {
-            return (
-              <div key={index} style={{ marginBottom: '12px' }}>
-                <div style={{
-                  color: '#ffa500',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  marginBottom: '4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Recommendations
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  fontSize: '14px',
-                  backgroundColor: 'rgba(255, 165, 0, 0.1)',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  borderLeft: '3px solid #ffa500'
-                }}>
-                  {trimmedLine.replace('Recommendations:', '').trim()}
-                </div>
-              </div>
-            );
-          }
-          
-          // Medication considerations section
-          if (trimmedLine.startsWith('Medication considerations')) {
-            return (
-              <div key={index} style={{ marginBottom: '8px' }}>
-                <div style={{
-                  color: '#e74c3c',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  marginBottom: '4px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Medication Considerations
-                </div>
-                <div style={{
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  fontSize: '14px',
-                  backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  borderLeft: '3px solid #e74c3c',
-                  fontStyle: 'italic'
-                }}>
-                  {trimmedLine.replace('Medication considerations (clinician judgment only):', '').trim()}
-                </div>
-              </div>
-            );
-          }
-          
-          // Regular lines
-          if (trimmedLine && !trimmedLine.includes(':')) {
-            return (
-              <div key={index} style={{
-                color: 'rgba(255, 255, 255, 0.9)',
-                fontSize: '14px',
-                marginBottom: '6px',
-                lineHeight: '1.5'
-              }}>
-                {trimmedLine}
-              </div>
-            );
-          }
-          
-          return null;
-        })}
-      </div>
-    );
+    return lines.map((line, index) => {
+      if (line.startsWith('**') && line.endsWith('**')) {
+        // Bold headers
+        return <strong key={index}>{line.slice(2, -2)}</strong>;
+      } else if (line.startsWith('- ')) {
+        // Bullet points
+        return <li key={index}>{line.slice(2)}</li>;
+      } else {
+        // Regular text
+        return <p key={index}>{line}</p>;
+      }
+    });
+  };
+
+  const formatClinicalNote = (content) => {
+    // Split content into sections
+    const sections = content.split('\n\n').filter(section => section.trim());
+    
+    return sections.map((section, index) => {
+      const trimmedSection = section.trim();
+      
+      if (trimmedSection.startsWith('Assessment:')) {
+        return (
+          <div key={index} style={{ marginBottom: '15px' }}>
+            <div style={{ 
+              color: '#4f46e5', 
+              fontWeight: '700', 
+              fontSize: '15px',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              📊 ASSESSMENT
+            </div>
+            <div style={{ 
+              color: 'rgba(255, 255, 255, 0.95)',
+              fontWeight: '500',
+              lineHeight: '1.5',
+              paddingLeft: '10px',
+              borderLeft: '3px solid #4f46e5'
+            }}>
+              {trimmedSection.replace('Assessment:', '').trim()}
+            </div>
+          </div>
+        );
+      } else if (trimmedSection.startsWith('Key Data:')) {
+        return (
+          <div key={index} style={{ marginBottom: '15px' }}>
+            <div style={{ 
+              color: '#00fbcd', 
+              fontWeight: '700', 
+              fontSize: '15px',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              📈 KEY DATA
+            </div>
+            <div style={{ 
+              color: 'rgba(255, 255, 255, 0.9)',
+              lineHeight: '1.6',
+              paddingLeft: '10px',
+              borderLeft: '3px solid #00fbcd',
+              fontFamily: 'monospace',
+              fontSize: '13px'
+            }}>
+              {trimmedSection.replace('Key Data:', '').trim()}
+            </div>
+          </div>
+        );
+      } else if (trimmedSection.startsWith('Recommendations:')) {
+        return (
+          <div key={index} style={{ marginBottom: '15px' }}>
+            <div style={{ 
+              color: '#fbbf24', 
+              fontWeight: '700', 
+              fontSize: '15px',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              💡 RECOMMENDATIONS
+            </div>
+            <div style={{ 
+              color: 'rgba(255, 255, 255, 0.9)',
+              lineHeight: '1.6',
+              paddingLeft: '10px',
+              borderLeft: '3px solid #fbbf24'
+            }}>
+              {trimmedSection.replace('Recommendations:', '').trim()}
+            </div>
+          </div>
+        );
+      } else if (trimmedSection.startsWith('Medication considerations')) {
+        return (
+          <div key={index} style={{ marginBottom: '15px' }}>
+            <div style={{ 
+              color: '#f87171', 
+              fontWeight: '700', 
+              fontSize: '15px',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              💊 MEDICATION CONSIDERATIONS
+            </div>
+            <div style={{ 
+              color: 'rgba(255, 255, 255, 0.9)',
+              lineHeight: '1.6',
+              paddingLeft: '10px',
+              borderLeft: '3px solid #f87171',
+              fontStyle: 'italic'
+            }}>
+              {trimmedSection.replace('Medication considerations (clinician judgment only):', '').trim()}
+            </div>
+          </div>
+        );
+      } else {
+        return (
+          <div key={index} style={{ 
+            marginBottom: '10px',
+            color: 'rgba(255, 255, 255, 0.9)',
+            lineHeight: '1.6'
+          }}>
+            {trimmedSection}
+          </div>
+        );
+      }
+    });
   };
 
   useEffect(() => {
@@ -189,11 +182,11 @@ function Messages() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isAiTyping]);
 
   const fetchConversations = async () => {
     try {
-      const response = await authenticatedFetch('http://localhost:3001/api/conversations');
+      const response = await authenticatedFetch('http://localhost:3001/api/messages/conversations');
       
       if (response && response.ok) {
         const data = await response.json();
@@ -660,21 +653,22 @@ function Messages() {
                         
                         <div
                           style={{
-                            maxWidth: isAiMessage ? '85%' : '70%',
+                            maxWidth: isAiMessage ? '90%' : '70%',
                             padding: isAiMessage ? '20px' : '12px 16px',
                             borderRadius: isAiMessage ? '12px' : '18px',
                             backgroundColor: isMyMessage ? '#00fbcd' : (isAiMessage ? 'rgba(79, 70, 229, 0.1)' : 'rgba(255, 255, 255, 0.1)'),
                             color: isMyMessage ? '#1a1a1a' : 'rgba(255, 255, 255, 0.9)',
                             border: isMyMessage ? 'none' : (isAiMessage ? '1px solid rgba(79, 70, 229, 0.3)' : '1px solid rgba(255, 255, 255, 0.2)'),
-                            position: 'relative'
+                            position: 'relative',
+                            textAlign: 'left'
                           }}
                         >
                           {isAiMessage && (
                             <div style={{
                               display: 'flex',
                               alignItems: 'center',
-                              marginBottom: '12px',
-                              paddingBottom: '8px',
+                              marginBottom: '15px',
+                              paddingBottom: '10px',
                               borderBottom: '1px solid rgba(79, 70, 229, 0.2)'
                             }}>
                               <span style={{
@@ -682,7 +676,7 @@ function Messages() {
                                 fontWeight: '600',
                                 fontSize: '14px'
                               }}>
-                                MedLink Assistant - Clinical Analysis
+                                📋 Clinical Analysis Report
                               </span>
                             </div>
                           )}
@@ -691,21 +685,22 @@ function Messages() {
                             <div style={{ 
                               fontSize: '14px',
                               lineHeight: '1.6',
+                              fontFamily: 'monospace',
                               whiteSpace: 'pre-wrap'
                             }}>
-                              {formatAiResponse(message.content)}
+                              {formatClinicalNote(message.content)}
                             </div>
                           ) : (
-                            <p style={{ margin: '0 0 5px 0', fontSize: '14px' }}>{message.content}</p>
+                            <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>{message.content}</p>
                           )}
                           
                           <p style={{
-                            margin: isAiMessage ? '12px 0 0 0' : '0',
+                            margin: isAiMessage ? '15px 0 0 0' : '0',
                             fontSize: '11px',
                             opacity: 0.7,
                             textAlign: 'right',
                             borderTop: isAiMessage ? '1px solid rgba(79, 70, 229, 0.2)' : 'none',
-                            paddingTop: isAiMessage ? '8px' : '0'
+                            paddingTop: isAiMessage ? '10px' : '0'
                           }}>
                             {new Date(message.created_at).toLocaleTimeString()}
                           </p>
@@ -885,7 +880,7 @@ function Messages() {
         </div>
       </div>
       {/* CSS for typing animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes typing-dot {
           0%, 60%, 100% {
             transform: scale(1);
