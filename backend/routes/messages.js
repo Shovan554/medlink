@@ -1,8 +1,44 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../config/database.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/attachments';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
@@ -103,7 +139,7 @@ router.get('/conversations', authenticateToken, async (req, res) => {
   }
 });
 
-// GET messages between current user and another user (MUST be after specific routes)
+// GET messages between current user and another user (updated to include attachments)
 router.get('/:userId', authenticateToken, async (req, res) => {
   try {
     const currentUserId = req.user.userId;
@@ -121,10 +157,15 @@ router.get('/:userId', authenticateToken, async (req, res) => {
              sender.first_name as sender_first_name,
              sender.last_name as sender_last_name,
              receiver.first_name as receiver_first_name,
-             receiver.last_name as receiver_last_name
+             receiver.last_name as receiver_last_name,
+             a.attachment_id,
+             a.file_url,
+             a.file_type,
+             a.file_size
       FROM messages m
       JOIN users sender ON m.sender_id = sender.user_id
       JOIN users receiver ON m.receiver_id = receiver.user_id
+      LEFT JOIN attachments a ON m.message_id = a.message_id
       WHERE (m.sender_id = $1 AND m.receiver_id = $2) 
          OR (m.sender_id = $2 AND m.receiver_id = $1)
       ORDER BY m.created_at ASC
@@ -137,8 +178,17 @@ router.get('/:userId', authenticateToken, async (req, res) => {
   }
 });
 
-// POST send a new message
-router.post('/', authenticateToken, async (req, res) => {
+// POST send a new message with optional attachment
+router.post('/', authenticateToken, (req, res, next) => {
+  // Check if this is a multipart request (file upload)
+  if (req.headers['content-type']?.includes('multipart/form-data')) {
+    // Use multer for multipart requests
+    upload.single('attachment')(req, res, next);
+  } else {
+    // Skip multer for regular JSON requests
+    next();
+  }
+}, async (req, res) => {
   try {
     const senderId = req.user.userId;
     const { content, receiver_id } = req.body;
@@ -147,15 +197,28 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Content and receiver_id are required' });
     }
 
-    const result = await pool.query(`
+    // Insert message
+    const messageResult = await pool.query(`
       INSERT INTO messages (sender_id, receiver_id, content, created_at, is_read)
       VALUES ($1, $2, $3, NOW(), false)
       RETURNING *
     `, [senderId, receiver_id, content]);
 
+    const message = messageResult.rows[0];
+
+    // Handle attachment if present
+    if (req.file) {
+      const fileUrl = `/uploads/attachments/${req.file.filename}`;
+      
+      await pool.query(`
+        INSERT INTO attachments (message_id, file_url, file_type, file_size, created_at)
+        VALUES ($1, $2, $3, $4, NOW())
+      `, [message.message_id, fileUrl, req.file.mimetype, req.file.size]);
+    }
+
     res.status(201).json({
       message: 'Message sent successfully',
-      data: result.rows[0]
+      data: message
     });
   } catch (error) {
     console.error('Error sending message:', error);

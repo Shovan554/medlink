@@ -7,6 +7,7 @@ function Messages() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
@@ -235,13 +236,18 @@ function Messages() {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation) return;
+    if ((!newMessage.trim() && !selectedFile) || !selectedConversation) return;
 
-    const messageContent = newMessage;
+    const messageContent = newMessage || (selectedFile ? `📎 ${selectedFile.name}` : '');
     const userID = localStorage.getItem('userID');
     
     if (isAiChat) {
-      // Handle AI chat
+      // Handle AI chat (no attachments)
+      if (selectedFile) {
+        alert('File attachments are not supported in AI chat');
+        return;
+      }
+      
       const tempMessage = {
         message_id: Date.now(),
         content: messageContent,
@@ -253,7 +259,7 @@ function Messages() {
       
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
-      setIsAiTyping(true); // Start typing animation
+      setIsAiTyping(true);
 
       try {
         const response = await authenticatedFetch('http://localhost:3001/api/ai/chat', {
@@ -266,7 +272,6 @@ function Messages() {
         if (response && response.ok) {
           const data = await response.json();
           
-          // Add AI response to messages
           const aiResponse = {
             message_id: Date.now() + 1,
             content: data.response,
@@ -275,10 +280,9 @@ function Messages() {
             created_at: new Date().toISOString()
           };
           
-          // Update messages and AI messages state
           setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
-          setIsAiTyping(false); // Stop typing animation
-          fetchAiConversations(); // Refresh AI conversations to get latest from DB
+          setIsAiTyping(false);
+          fetchAiConversations();
         } else {
           setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
           setIsAiTyping(false);
@@ -291,46 +295,85 @@ function Messages() {
         setNewMessage(messageContent);
       }
     } else {
-      // Handle regular doctor chat (existing code)
+      // Handle regular doctor chat with attachments
       const tempMessage = {
         message_id: Date.now(),
         content: messageContent,
         sender_id: parseInt(userID),
         receiver_id: selectedConversation.user_id,
         created_at: new Date().toISOString(),
-        sending: true
+        sending: true,
+        file_url: selectedFile ? URL.createObjectURL(selectedFile) : null,
+        file_type: selectedFile?.type,
+        file_size: selectedFile?.size
       };
       
       setMessages(prev => [...prev, tempMessage]);
       setNewMessage('');
+      const fileToSend = selectedFile;
+      setSelectedFile(null);
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:3001/api/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            content: messageContent,
-            receiver_id: selectedConversation.user_id
-          }),
-        });
+        let response;
+        
+        if (fileToSend) {
+          // Send as FormData for file uploads
+          const formData = new FormData();
+          formData.append('content', messageContent);
+          formData.append('receiver_id', selectedConversation.user_id);
+          formData.append('attachment', fileToSend);
 
-        if (response.ok) {
+          response = await fetch('http://localhost:3001/api/messages', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData
+          });
+        } else {
+          // Send as JSON for text-only messages
+          response = await authenticatedFetch('http://localhost:3001/api/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              content: messageContent,
+              receiver_id: selectedConversation.user_id
+            })
+          });
+        }
+
+        if (response && response.ok) {
           fetchMessages(selectedConversation.user_id);
           fetchConversations();
         } else {
           setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
           setNewMessage(messageContent);
+          setSelectedFile(fileToSend);
         }
       } catch (error) {
         console.error('Error sending message:', error);
         setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
         setNewMessage(messageContent);
+        setSelectedFile(fileToSend);
       }
     }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        alert('File size must be less than 10MB');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
   };
 
   const fetchDoctorAvailability = async (doctorId, date) => {
@@ -864,7 +907,47 @@ function Messages() {
                               {formatAiResponse(message.content)}
                             </div>
                           ) : (
-                            <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>{message.content}</p>
+                            <>
+                              <p style={{ margin: '0 0 5px 0', fontSize: '14px', textAlign: 'left' }}>
+                                {message.content}
+                              </p>
+                              {message.file_url && (
+                                <div style={{ marginTop: '10px' }}>
+                                  {message.file_type?.startsWith('image/') ? (
+                                    <img 
+                                      src={`http://localhost:3001${message.file_url}`}
+                                      alt="Attachment"
+                                      style={{ 
+                                        maxWidth: '200px', 
+                                        maxHeight: '200px', 
+                                        borderRadius: '8px',
+                                        cursor: 'pointer'
+                                      }}
+                                      onClick={() => window.open(`http://localhost:3001${message.file_url}`, '_blank')}
+                                    />
+                                  ) : (
+                                    <a 
+                                      href={`http://localhost:3001${message.file_url}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 12px',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                        borderRadius: '6px',
+                                        color: isMyMessage ? '#1a1a1a' : '#00fbcd',
+                                        textDecoration: 'none',
+                                        fontSize: '12px'
+                                      }}
+                                    >
+                                      📎 {message.file_url.split('/').pop()}
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                            </>
                           )}
                           
                           <p style={{
@@ -972,6 +1055,34 @@ function Messages() {
                 padding: '20px',
                 flexShrink: 0
               }}>
+                {selectedFile && (
+                  <div style={{
+                    marginBottom: '10px',
+                    padding: '10px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
+                      📎 {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </span>
+                    <button
+                      onClick={removeSelectedFile}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ff6b6b',
+                        cursor: 'pointer',
+                        fontSize: '16px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                
                 <form onSubmit={sendMessage} style={{ display: 'flex', gap: '10px' }}>
                   <input
                     type="text"
@@ -989,9 +1100,39 @@ function Messages() {
                       outline: 'none'
                     }}
                   />
+                  
+                  {!isAiChat && (
+                    <>
+                      <input
+                        type="file"
+                        id="file-upload"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                        accept="image/*,.pdf,.doc,.docx,.txt"
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        style={{
+                          padding: '12px',
+                          borderRadius: '50%',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          color: 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px'
+                        }}
+                      >
+                        📎
+                      </label>
+                    </>
+                  )}
+                  
                   <button
                     type="submit"
-                    disabled={!newMessage.trim()}
+                    disabled={(!newMessage.trim() && !selectedFile)}
                     style={{
                       padding: '12px 24px',
                       borderRadius: '25px',
@@ -1000,7 +1141,7 @@ function Messages() {
                       color: '#1a1a1a',
                       fontWeight: '600',
                       cursor: 'pointer',
-                      opacity: newMessage.trim() ? 1 : 0.5,
+                      opacity: (newMessage.trim() || selectedFile) ? 1 : 0.5,
                       transition: 'opacity 0.2s'
                     }}
                   >
