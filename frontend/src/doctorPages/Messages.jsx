@@ -230,6 +230,7 @@ function Messages() {
       
       if (response && response.ok) {
         const data = await response.json()
+        console.log('AI conversations data:', data) // Debug log
         setAiMessages(data)
       }
     } catch (error) {
@@ -258,12 +259,81 @@ function Messages() {
     const userID = localStorage.getItem('userID');
     
     if (isAiChat) {
-      // AI chat doesn't support attachments yet
-      if (selectedFile) {
-        alert('File attachments are not supported in AI chat');
-        return;
+      // Handle AI chat with file attachments
+      const tempMessage = {
+        message_id: Date.now(),
+        content: messageContent,
+        sender_id: parseInt(userID),
+        receiver_id: -1,
+        created_at: new Date().toISOString(),
+        sending: true,
+        file_url: selectedFile ? URL.createObjectURL(selectedFile) : null,
+        file_type: selectedFile?.type,
+        file_size: selectedFile?.size
+      };
+      
+      setMessages(prev => [...prev, tempMessage]);
+      setNewMessage('');
+      const fileToSend = selectedFile;
+      setSelectedFile(null);
+      
+      // Reset file input
+      const fileInput = document.getElementById('file-upload');
+      if (fileInput) fileInput.value = '';
+      
+      setIsAiTyping(true);
+
+      try {
+        let response;
+        
+        if (fileToSend) {
+          // Send file to AI with FormData
+          const formData = new FormData();
+          formData.append('message', messageContent);
+          formData.append('attachment', fileToSend);
+
+          response = await fetch('http://localhost:3001/api/doctor/ai/chat-with-file', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData
+          });
+        } else {
+          // Regular AI chat
+          response = await authenticatedFetch('http://localhost:3001/api/doctor/ai/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message: messageContent }),
+          });
+        }
+
+        if (response && response.ok) {
+          const data = await response.json();
+          
+          const aiResponse = {
+            message_id: Date.now() + 1,
+            content: data.response,
+            sender_id: -1,
+            receiver_id: parseInt(userID),
+            created_at: new Date().toISOString()
+          };
+          
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false);
+          fetchAiConversations(); // This should now include the attachment
+        } else {
+          setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+          setIsAiTyping(false);
+          setNewMessage(messageContent);
+          setSelectedFile(fileToSend);
+        }
+      } catch (error) {
+        console.error('Error sending AI message:', error);
+        setMessages(prev => prev.filter(msg => msg.message_id !== tempMessage.message_id));
+        setIsAiTyping(false);
+        setNewMessage(messageContent);
+        setSelectedFile(fileToSend);
       }
-      // ... existing AI chat logic
     } else {
       // Handle regular patient chat with attachments
       const tempMessage = {
@@ -355,10 +425,13 @@ function Messages() {
     if (file) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
         alert('File size must be less than 10MB');
+        e.target.value = ''; // Reset input
         return;
       }
       setSelectedFile(file);
+      console.log('File selected:', file.name, file.size); // Debug log
     }
+    // Don't reset the input here - let it reset after sending
   };
 
   const removeSelectedFile = () => {
@@ -674,24 +747,6 @@ function Messages() {
                             textAlign: 'left'
                           }}
                         >
-                          {isAiMessage && (
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              marginBottom: '15px',
-                              paddingBottom: '10px',
-                              borderBottom: '1px solid rgba(79, 70, 229, 0.2)'
-                            }}>
-                              <span style={{
-                                color: '#4f46e5',
-                                fontWeight: '600',
-                                fontSize: '14px'
-                              }}>
-                                📋 Clinical Analysis Report
-                              </span>
-                            </div>
-                          )}
-                          
                           {isAiMessage ? (
                             <div style={{ 
                               fontSize: '14px',
@@ -710,7 +765,7 @@ function Messages() {
                                 <div style={{ marginTop: '10px' }}>
                                   {message.file_type?.startsWith('image/') ? (
                                     <img 
-                                      src={`http://localhost:3001${message.file_url}`}
+                                      src={message.file_url.startsWith('blob:') ? message.file_url : `http://localhost:3001${message.file_url}`}
                                       alt="Attachment"
                                       style={{ 
                                         maxWidth: '200px', 
@@ -718,11 +773,15 @@ function Messages() {
                                         borderRadius: '8px',
                                         cursor: 'pointer'
                                       }}
-                                      onClick={() => window.open(`http://localhost:3001${message.file_url}`, '_blank')}
+                                      onClick={() => {
+                                        if (!message.file_url.startsWith('blob:')) {
+                                          window.open(`http://localhost:3001${message.file_url}`, '_blank');
+                                        }
+                                      }}
                                     />
                                   ) : (
                                     <a 
-                                      href={`http://localhost:3001${message.file_url}`}
+                                      href={message.file_url.startsWith('blob:') ? '#' : `http://localhost:3001${message.file_url}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       style={{
@@ -737,7 +796,7 @@ function Messages() {
                                         fontSize: '12px'
                                       }}
                                     >
-                                      📎 {message.file_url.split('/').pop()}
+                                      📎 {message.file_url.startsWith('blob:') ? 'Uploading...' : message.file_url.split('/').pop()}
                                     </a>
                                   )}
                                 </div>
@@ -926,34 +985,31 @@ function Messages() {
                     }}
                   />
                   
-                  {!isAiChat && (
-                    <>
-                      <input
-                        type="file"
-                        id="file-upload"
-                        onChange={handleFileSelect}
-                        style={{ display: 'none' }}
-                        accept="image/*,.pdf,.doc,.docx,.txt"
-                      />
-                      <label
-                        htmlFor="file-upload"
-                        style={{
-                          padding: '12px',
-                          borderRadius: '50%',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                          color: 'white',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px'
-                        }}
-                      >
-                        📎
-                      </label>
-                    </>
-                  )}
+                  {/* Show attachment button for BOTH AI chat and regular chat */}
+                  <input
+                    type="file"
+                    id="file-upload"
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    style={{
+                      padding: '12px',
+                      borderRadius: '50%',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      color: 'white',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px'
+                    }}
+                  >
+                    📎
+                  </label>
                   
                   <button
                     type="submit"

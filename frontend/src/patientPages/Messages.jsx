@@ -92,13 +92,6 @@ function Messages() {
   useEffect(() => {
     fetchConversations();
     fetchAiConversations();
-    
-    // Set up polling for conversations to update previews
-    const conversationInterval = setInterval(() => {
-      fetchConversations();
-    }, 3000);
-    
-    return () => clearInterval(conversationInterval);
   }, []);
 
   useEffect(() => {
@@ -112,7 +105,7 @@ function Messages() {
         setIsAiChat(false);
         fetchMessages(selectedConversation.user_id);
         
-        // Set up polling for regular messages (only for selected conversation)
+        // Set up polling for regular messages only
         const interval = setInterval(() => {
           fetchMessages(selectedConversation.user_id);
         }, 3000);
@@ -181,18 +174,18 @@ function Messages() {
       // Add existing conversations
       allConversations = [...allConversations, ...conversations];
       
-      // Sort doctor conversations by last message time (most recent first)
-      const doctorConversations = allConversations.filter(conv => conv.user_id !== 0);
-      const sortedDoctorConversations = doctorConversations.sort((a, b) => {
-        const timeA = a.last_message_time ? new Date(a.last_message_time) : new Date(0);
-        const timeB = b.last_message_time ? new Date(b.last_message_time) : new Date(0);
-        return timeB - timeA;
-      });
-      
       setConversations(allConversations);
       
-      // Auto-select most recent doctor conversation instead of AI
+      // Only auto-select if no conversation is currently selected
       if (!selectedConversation) {
+        // Sort doctor conversations by last message time (most recent first)
+        const doctorConversations = allConversations.filter(conv => conv.user_id !== 0);
+        const sortedDoctorConversations = doctorConversations.sort((a, b) => {
+          const timeA = a.last_message_time ? new Date(a.last_message_time) : new Date(0);
+          const timeB = b.last_message_time ? new Date(b.last_message_time) : new Date(0);
+          return timeB - timeA;
+        });
+        
         const mostRecentDoctor = sortedDoctorConversations[0];
         setSelectedConversation(mostRecentDoctor || aiConversation);
       }

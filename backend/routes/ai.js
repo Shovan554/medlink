@@ -5,7 +5,7 @@ import pool from '../config/database.js';
 const router = express.Router();
 
 // Gemini API configuration
-const GEMINI_API_KEY = 'AIzaSyAqBHqCZ0jHbhFSP0XBSq3KHM40Sc2Ts1M';
+const GEMINI_API_KEY = 'AIzaSyBgREJzSmWDJTOVlFio3uMXr4fUaXbuPPY';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 // Middleware to verify JWT token

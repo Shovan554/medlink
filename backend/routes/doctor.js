@@ -1,6 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../config/database.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
 
@@ -21,6 +24,37 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/attachments';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // GET patients for current doctor with alert counts
 router.get('/patients', authenticateToken, async (req, res) => {
@@ -143,9 +177,15 @@ router.get('/ai/conversations', authenticateToken, async (req, res) => {
     const doctorUserId = req.user.userId;
     
     const result = await pool.query(`
-      SELECT * FROM doctor_ai_messages 
-      WHERE (sender_id = $1 AND receiver_id = -1) OR (sender_id = -1 AND receiver_id = $1)
-      ORDER BY created_at ASC
+      SELECT 
+        m.*,
+        a.file_url,
+        a.file_type,
+        a.file_size
+      FROM doctor_ai_messages m
+      LEFT JOIN ai_attachments a ON m.message_id = a.message_id
+      WHERE (m.sender_id = $1 AND m.receiver_id = -1) OR (m.sender_id = -1 AND m.receiver_id = $1)
+      ORDER BY m.created_at ASC
     `, [doctorUserId]);
 
     res.json(result.rows);
@@ -301,7 +341,7 @@ Medication considerations (clinician judgment only): short-term beta-blocker if 
       aiResponse = 'AI service is not configured. Please contact your administrator.';
     } else {
       try {
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBgREJzSmWDJTOVlFio3uMXr4fUaXbuPPY`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -400,6 +440,159 @@ router.put('/alerts/:alertId/read', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error marking alert as read:', error);
     res.status(500).json({ error: 'Failed to mark alert as read' });
+  }
+});
+
+// POST send message with file to AI for doctor
+router.post('/ai/chat-with-file', authenticateToken, upload.single('attachment'), async (req, res) => {
+  try {
+    const doctorUserId = req.user.userId;
+    const { message } = req.body;
+
+    console.log('File upload request:', {
+      userId: doctorUserId,
+      message,
+      file: req.file ? {
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      } : null
+    });
+
+    // Store doctor message with attachment
+    const messageResult = await pool.query(`
+      INSERT INTO doctor_ai_messages (sender_id, receiver_id, content, created_at)
+      VALUES ($1, -1, $2, NOW())
+      RETURNING message_id
+    `, [doctorUserId, message || 'Sent a file']);
+
+    console.log('Message stored with ID:', messageResult.rows[0].message_id);
+
+    let fileUrl = null;
+    if (req.file) {
+      fileUrl = `/uploads/attachments/${req.file.filename}`;
+      
+      // Check if ai_attachments table exists, if not use regular attachments
+      try {
+        await pool.query(`
+          INSERT INTO ai_attachments (message_id, file_url, file_type, file_size, created_at)
+          VALUES ($1, $2, $3, $4, NOW())
+        `, [messageResult.rows[0].message_id, fileUrl, req.file.mimetype, req.file.size]);
+        console.log('File attachment stored in ai_attachments');
+      } catch (tableError) {
+        console.log('ai_attachments table not found, using attachments table');
+        await pool.query(`
+          INSERT INTO attachments (message_id, file_url, file_type, file_size, created_at)
+          VALUES ($1, $2, $3, $4, NOW())
+        `, [messageResult.rows[0].message_id, fileUrl, req.file.mimetype, req.file.size]);
+      }
+    }
+
+    // Simplified health data query to avoid errors
+    let snapshot = {};
+    let sleepData = [];
+    let todayData = {};
+
+    try {
+      const snapshotResult = await pool.query(`
+        SELECT 
+          (SELECT ROUND(AVG(value))::int FROM health_realtime WHERE metric_name = 'heart_rate' AND timestamp::date = CURRENT_DATE) AS avg_heart_rate,
+          (SELECT ROUND(AVG(value))::int FROM health_realtime WHERE metric_name = 'respiratory_rate' AND timestamp::date = CURRENT_DATE) AS avg_respiratory_rate
+      `);
+      todayData = snapshotResult.rows[0] || {};
+    } catch (healthError) {
+      console.log('Health data query failed, continuing without it');
+    }
+
+    // Create clinical prompt for doctors
+    let prompt = `
+ROLE: You are MedLink AI — a clinically aware assistant for physicians.
+You interpret health data and analyze medical files when provided.
+
+DOCTOR MESSAGE: ${message || 'Please analyze this file'}
+HEALTH CONTEXT: ${JSON.stringify(todayData)}
+
+Please provide a brief clinical assessment.
+`;
+
+    let aiResponse = 'I received your message and any attached file.';
+    
+    // Check if API key is configured
+    if (!process.env.GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
+      aiResponse = 'AI service is not configured. Please contact your administrator.';
+    } else {
+      try {
+        let requestBody;
+
+        if (req.file && req.file.mimetype.startsWith('image/')) {
+          // Handle image analysis with Gemini Vision
+          const imageData = fs.readFileSync(req.file.path);
+          const base64Image = imageData.toString('base64');
+
+          prompt += `\nPlease analyze the provided medical image.`;
+
+          requestBody = {
+            contents: [{
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: req.file.mimetype,
+                    data: base64Image
+                  }
+                }
+              ]
+            }]
+          };
+        } else {
+          // Text-only or non-image file
+          if (req.file) {
+            prompt += `\nA ${req.file.mimetype} file was uploaded.`;
+          }
+
+          requestBody = {
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          };
+        }
+
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBgREJzSmWDJTOVlFio3uMXr4fUaXbuPPY`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          aiResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to process the request.';
+        } else {
+          console.error('Gemini API error:', geminiResponse.status);
+          aiResponse = 'I received your file but had trouble analyzing it. Please try again.';
+        }
+      } catch (apiError) {
+        console.error('Gemini API call failed:', apiError);
+        aiResponse = 'I\'m experiencing technical difficulties analyzing the file.';
+      }
+    }
+
+    // Store AI response
+    await pool.query(`
+      INSERT INTO doctor_ai_messages (sender_id, receiver_id, content, created_at)
+      VALUES (-1, $1, $2, NOW())
+    `, [doctorUserId, aiResponse]);
+
+    console.log('AI response stored successfully');
+
+    res.json({
+      message: 'AI response generated',
+      response: aiResponse
+    });
+
+  } catch (error) {
+    console.error('Error processing doctor AI chat with file:', error);
+    res.status(500).json({ error: 'Failed to process AI chat with file', details: error.message });
   }
 });
 
