@@ -47,6 +47,18 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Animation keyframes */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Metrics Grid - Top Row for Small Metrics */
 .patient-top-row,
 .patient-bottom-row {
@@ -58,6 +70,23 @@
   margin: 0 auto 40px;
 }
 
+.patient-top-row .patient-metric-card {
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out forwards;
+}
+
+.patient-top-row .patient-metric-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.patient-top-row .patient-metric-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.patient-top-row .patient-metric-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 .patient-top-row {
   margin-bottom: 40px;
 }
@@ -65,6 +94,23 @@
 .patient-bottom-row {
   margin-top: 40px;
   margin-bottom: 40px;
+}
+
+.patient-bottom-row .patient-metric-card {
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out forwards;
+}
+
+.patient-bottom-row .patient-metric-card:nth-child(1) {
+  animation-delay: 0.7s;
+}
+
+.patient-bottom-row .patient-metric-card:nth-child(2) {
+  animation-delay: 0.8s;
+}
+
+.patient-bottom-row .patient-metric-card:nth-child(3) {
+  animation-delay: 0.9s;
 }
 
 @media (max-width: 900px) {
@@ -317,6 +363,9 @@
   min-height: 650px; /* Increased from 500px */
   display: flex;
   flex-direction: column;
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards;
+  animation-delay: 0.4s;
 }
 
 .patient-heart-rate-expanded:hover,
@@ -395,6 +444,9 @@
   box-shadow: 0px 0px 6px 6px rgba(2, 208, 181, 0.1);
   position: relative;
   overflow: hidden;
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards;
+  animation-delay: 1.0s;
 }
 
 .patient-sleep-analysis-section::before {

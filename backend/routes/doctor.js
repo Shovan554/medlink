@@ -33,6 +33,8 @@ router.get('/patients', authenticateToken, async (req, res) => {
         u.first_name,
         u.last_name,
         u.email,
+        u.gender,
+        EXTRACT(YEAR FROM AGE(u.dob)) AS age,
         COALESCE(alert_counts.alert_count, 0) as alert_count
       FROM doctors d
       JOIN patients p ON d.doctor_id = p.doctor_id

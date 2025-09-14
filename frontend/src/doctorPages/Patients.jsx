@@ -57,7 +57,16 @@ function Patients() {
 
       if (response.ok) {
         const data = await response.json();
-        setPatients(data);
+        // Sort patients: alerts first (by count desc), then alphabetically
+        const sortedPatients = data.sort((a, b) => {
+          // First, sort by alert count (descending)
+          if (b.alert_count !== a.alert_count) {
+            return b.alert_count - a.alert_count;
+          }
+          // Then sort alphabetically by first name
+          return a.first_name.localeCompare(b.first_name);
+        });
+        setPatients(sortedPatients);
       } else {
         setError('Failed to fetch patients');
       }
@@ -215,7 +224,7 @@ function Patients() {
                       color: 'rgba(255, 255, 255, 0.5)', 
                       fontSize: '12px' 
                     }}>
-                      Patient ID: {patient.user_id}
+                      {patient.age ? `${patient.age} years old` : 'Age not specified'} • {patient.gender || 'Gender not specified'}
                     </p>
                   </div>
                 </div>

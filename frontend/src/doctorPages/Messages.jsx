@@ -211,7 +211,9 @@ function Messages() {
         
         setConversations([aiConversation, ...sortedConversations]);
         if (!selectedConversation) {
-          setSelectedConversation(aiConversation);
+          // Auto-select most recent patient conversation instead of AI
+          const mostRecentPatient = sortedConversations[0];
+          setSelectedConversation(mostRecentPatient || aiConversation);
         }
       }
     } catch (error) {

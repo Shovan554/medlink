@@ -13,7 +13,7 @@ function DoctorsReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage] = useState(30);
+  const [recordsPerPage] = useState(15);
   const [downloading, setDownloading] = useState(false);
 
   // Metric mappings with display names

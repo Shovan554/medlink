@@ -32,6 +32,19 @@
   font-size: 16px;
 }
 
+/* Animation keyframes */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stats Grid Animation */
 .stats-grid {
   grid-area: stats;
   display: grid;
@@ -41,6 +54,8 @@
 }
 
 .stat-card {
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out forwards;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border-radius: 16px;
@@ -51,6 +66,18 @@
   gap: 25px;
   transition: transform 0.2s ease;
   min-height: 140px;
+}
+
+.stat-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.stat-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.stat-card:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
 .stat-card:hover {
@@ -83,26 +110,53 @@
   margin: 0;
 }
 
+/* Dashboard Content Animation */
 .dashboard-content {
   grid-area: content;
   display: flex;
   flex-direction: column;
   gap: 30px;
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards;
+  animation-delay: 0.4s;
 }
 
+/* Dashboard Sidebar Animation */
 .dashboard-sidebar {
   grid-area: sidebar;
   display: flex;
   flex-direction: column;
   gap: 30px;
+  opacity: 0;
+  animation: slideUpFade 0.8s ease-out forwards;
+  animation-delay: 0.6s;
 }
 
+/* Individual sections within content */
 .dashboard-section {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 25px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out forwards;
+}
+
+.dashboard-content .dashboard-section:nth-child(1) {
+  animation-delay: 0.5s;
+}
+
+.dashboard-content .dashboard-section:nth-child(2) {
+  animation-delay: 0.6s;
+}
+
+.dashboard-sidebar .dashboard-section:nth-child(1) {
+  animation-delay: 0.7s;
+}
+
+.dashboard-sidebar .dashboard-section:nth-child(2) {
+  animation-delay: 0.8s;
 }
 
 .dashboard-section h2 {
