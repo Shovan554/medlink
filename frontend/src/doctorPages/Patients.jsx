@@ -8,22 +8,36 @@ function Patients() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientData, setPatientData] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [suspectedDiseases, setSuspectedDiseases] = useState([]);
 
   const fetchPatientDetails = async (patientId) => {
     setModalLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/doctor/patient/${patientId}/details`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.log('Fetching details for patient:', patientId);
+      
+      // Fetch both patient details and suspected diseases
+      const [detailsResponse, diseasesResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/doctor/patient/${patientId}/details`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/suspected/diseases/${patientId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (detailsResponse.ok) {
+        const data = await detailsResponse.json();
         setPatientData(data);
+        console.log('Patient data:', data);
+      }
+      
+      if (diseasesResponse.ok) {
+        const diseasesData = await diseasesResponse.json();
+        console.log('Diseases response:', diseasesData);
+        setSuspectedDiseases(diseasesData.suspected_diseases || []);
       } else {
-        console.error('Failed to fetch patient details');
+        console.error('Diseases response error:', diseasesResponse.status);
       }
     } catch (error) {
       console.error('Error fetching patient details:', error);
@@ -40,6 +54,7 @@ function Patients() {
   const closePatientModal = () => {
     setSelectedPatient(null);
     setPatientData(null);
+    setSuspectedDiseases([]);
   };
 
   useEffect(() => {
@@ -511,6 +526,71 @@ function Patients() {
                     </div>
                   </div>
                 </div>
+
+                {/* Suspected Diseases Section */}
+                {suspectedDiseases && suspectedDiseases.length > 0 && (
+                  <div style={{ marginBottom: '30px' }}>
+                    <h3 style={{ 
+                      color: '#ff6b6b', 
+                      marginBottom: '15px',
+                      fontSize: '1.3rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      🔍 Suspected Conditions
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {suspectedDiseases.map((disease, index) => (
+                        <div key={index} style={{
+                          padding: '15px',
+                          backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                          border: '1px solid rgba(255, 107, 107, 0.3)',
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            marginBottom: '8px'
+                          }}>
+                            <h4 style={{ 
+                              color: '#ff6b6b', 
+                              margin: 0,
+                              fontSize: '1.1rem'
+                            }}>
+                              {disease.condition}
+                            </h4>
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              backgroundColor: disease.confidence === 'high' ? 'rgba(255, 107, 107, 0.2)' :
+                                 disease.confidence === 'medium' ? 'rgba(255, 193, 7, 0.2)' :
+                                 'rgba(108, 117, 125, 0.2)',
+                              color: disease.confidence === 'high' ? '#ff6b6b' :
+                                     disease.confidence === 'medium' ? '#ffc107' :
+                                     '#6c757d'
+                            }}>
+                              {disease.confidence.toUpperCase()}
+                            </span>
+                          </div>
+                          <p style={{ 
+                            color: 'rgba(255, 255, 255, 0.8)', 
+                            margin: '0 0 8px 0',
+                            fontSize: '0.9rem'
+                          }}>
+                            {disease.recommendation}
+                          </p>
+                          <div style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                            <strong>Indicators:</strong> {disease.indicators.join(', ')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Anomalies Section */}
                 {patientData.anomalies && patientData.anomalies.length > 0 && (

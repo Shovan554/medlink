@@ -16,6 +16,7 @@ import axios from 'axios';
 import callsRoutes from './routes/calls.js';
 import aiRoutes from './routes/ai.js';
 import alertsRoutes from './routes/alerts.js';
+import suspectedRoutes from './routes/suspected.js';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
@@ -213,6 +214,7 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/calls', callsRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api', settingsRoutes);
+app.use('/api/suspected', suspectedRoutes);
 
 // Debug: List all registered routes
 console.log('Registered routes:');
